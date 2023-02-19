@@ -16,9 +16,9 @@ use Illuminate\Support\Str;
 use function in_array;
 use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
 use MongoDB\BSON\Binary;
+use function MongoDB\BSON\fromPHP;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
-use function MongoDB\BSON\fromPHP;
 use MongoDB\Driver\Exception\UnexpectedValueException;
 use function uniqid;
 
@@ -262,7 +262,7 @@ abstract class Model extends BaseModel
         }
 
         try {
-            return (fromPHP([$attribute]) === fromPHP([$original]));
+            return fromPHP([$attribute]) === fromPHP([$original]);
         } catch (UnexpectedValueException $e) {
             return false;
         }
