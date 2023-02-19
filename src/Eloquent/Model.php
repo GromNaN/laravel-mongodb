@@ -18,6 +18,8 @@ use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
 use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
+use function MongoDB\BSON\fromPHP;
+use MongoDB\Driver\Exception\UnexpectedValueException;
 use function uniqid;
 
 abstract class Model extends BaseModel
@@ -259,20 +261,11 @@ abstract class Model extends BaseModel
             return false;
         }
 
-        if ($this->isDateAttribute($key)) {
-            $attribute = $attribute instanceof UTCDateTime ? $this->asDateTime($attribute) : $attribute;
-            $original = $original instanceof UTCDateTime ? $this->asDateTime($original) : $original;
-
-            return $attribute == $original;
+        try {
+            return (fromPHP([$attribute]) === fromPHP([$original]));
+        } catch (UnexpectedValueException $e) {
+            return false;
         }
-
-        if ($this->hasCast($key, static::$primitiveCastTypes)) {
-            return $this->castAttribute($key, $attribute) ===
-                $this->castAttribute($key, $original);
-        }
-
-        return is_numeric($attribute) && is_numeric($original)
-            && strcmp((string) $attribute, (string) $original) === 0;
     }
 
     /**
