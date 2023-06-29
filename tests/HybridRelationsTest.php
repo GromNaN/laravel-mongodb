@@ -3,12 +3,21 @@
 declare(strict_types=1);
 
 use Illuminate\Database\MySqlConnection;
+use Illuminate\Support\Facades\DB;
+use PDOException;
 
 class HybridRelationsTest extends TestCase
 {
     public function setUp(): void
     {
         parent::setUp();
+
+        /** @var Connection */
+        try {
+            DB::connection('mysql')->select('SELECT 1');
+        } catch (PDOException) {
+            $this->markTestSkipped('MySQL connection is not available.');
+        }
 
         MysqlUser::executeSchema();
         MysqlBook::executeSchema();
