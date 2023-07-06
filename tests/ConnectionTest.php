@@ -37,7 +37,7 @@ class ConnectionTest extends TestCase
     public function testDb()
     {
         $connection = DB::connection('mongodb');
-        $this->assertInstanceOf(Database::class, $connection->getMongoDB());
+        $this->assertInstanceOf(Database::class, $connection->getDatabase());
         $this->assertInstanceOf(Client::class, $connection->getMongoClient());
     }
 
@@ -127,7 +127,7 @@ class ConnectionTest extends TestCase
         $client = $connection->getMongoClient();
 
         $this->assertSame($expectedUri, (string) $client);
-        $this->assertSame($expectedDatabaseName, $connection->getMongoDB()->getDatabaseName());
+        $this->assertSame($expectedDatabaseName, $connection->getDatabase()->getDatabaseName());
     }
 
     public function testConnectionWithoutConfiguredDatabase(): void

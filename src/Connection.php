@@ -112,7 +112,8 @@ class Connection extends BaseConnection
      *
      * @return Database
      */
-    public function getMongoDB()
+    // Should be named getDatabase ?
+    public function getDatabase()
     {
         return $this->db;
     }
@@ -132,7 +133,7 @@ class Connection extends BaseConnection
      */
     public function getDatabaseName()
     {
-        return $this->getMongoDB()->getDatabaseName();
+        return $this->getDatabase()->getDatabaseName();
     }
 
     /**
@@ -147,6 +148,7 @@ class Connection extends BaseConnection
     protected function getDefaultDatabaseName(string $dsn, array $config): string
     {
         if (empty($config['database'])) {
+            // Use parse_url() to get the database name from dsn
             if (preg_match('/^mongodb(?:[+]srv)?:\\/\\/.+\\/([^?&]+)/s', $dsn, $matches)) {
                 $config['database'] = $matches[1];
             } else {
@@ -195,6 +197,8 @@ class Connection extends BaseConnection
      */
     public function disconnect()
     {
+        // No need to explicitly disconnect?
+        // What appens if a reference to the connection is kept somewhere?
         unset($this->connection);
     }
 
@@ -260,6 +264,9 @@ class Connection extends BaseConnection
     /**
      * @inheritdoc
      */
+    // Should be @internal because the parent method is protected
+    // and this method is use in Collection::__call
+    // Otherwise reimplement the method in Collection
     public function getElapsedTime($start)
     {
         return parent::getElapsedTime($start);
@@ -302,6 +309,8 @@ class Connection extends BaseConnection
      *
      * @param  \MongoDB\Database  $db
      */
+    // 1 more reason to rename getMongoDB to getDatabase, for consistency with the setter
+    // this is not used in the codebase, use-case may be challenged as it allows to by-pass the connection
     public function setDatabase(\MongoDB\Database $db)
     {
         $this->db = $db;

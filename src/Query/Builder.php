@@ -69,6 +69,9 @@ class Builder extends BaseBuilder
      *
      * @var array
      */
+    // can we get this list automatically from mongodb/mongodb?
+    // at least "in" is missing but works fine
+    // @link https://www.mongodb.com/docs/manual/reference/operator/query/
     public $operators = [
         '=',
         '<',
@@ -432,6 +435,10 @@ class Builder extends BaseBuilder
      *
      * @return string
      */
+    // never used. What's the purpose?
+    // Should be deprecated?
+    // Maybe used in conjunction with cache() method?
+    // @link https://github.com/jenssegers/laravel-mongodb/commit/3f1be668ee2e60ac630cd25d1230c3a449b0f9d6
     public function generateCacheKey()
     {
         $key = [
@@ -454,7 +461,9 @@ class Builder extends BaseBuilder
      */
     public function aggregate($function, $columns = [])
     {
-        $this->aggregate = compact('function', 'columns');
+        // less magic https://stackoverflow.com/a/35589135
+        // "compact" is common in laravel https://github.com/search?q=repo%3Alaravel%2Fframework%20compact&type=code
+        $this->aggregate = ['function' => $function, 'columns' => $columns];
 
         $previousColumns = $this->columns;
 
@@ -513,6 +522,8 @@ class Builder extends BaseBuilder
         }
 
         if ($column == 'natural') {
+            // A hint should be added automatically?
+            // https://www.mongodb.com/docs/manual/reference/operator/meta/natural/
             $this->orders['$natural'] = $direction;
         } else {
             $this->orders[(string) $column] = $direction;
@@ -544,9 +555,7 @@ class Builder extends BaseBuilder
      */
     public function whereBetween($column, iterable $values, $boolean = 'and', $not = false)
     {
-        $type = 'between';
-
-        $this->wheres[] = compact('column', 'type', 'boolean', 'values', 'not');
+        $this->wheres[] = ['column' => $column, 'type' => 'between', 'boolean' => $boolean, 'values' => $values, 'not' => $not];
 
         return $this;
     }
@@ -615,7 +624,7 @@ class Builder extends BaseBuilder
     public function update(array $values, array $options = [])
     {
         // Use $set as default operator.
-        if (! Str::startsWith(key($values), '$')) {
+        if (! str_starts_with(key($values), '$')) {
             $values = ['$set' => $values];
         }
 
@@ -679,9 +688,10 @@ class Builder extends BaseBuilder
         $results = $this->get($key === null ? [$column] : [$column, $key]);
 
         // Convert ObjectID's to strings
-        if ($key == '_id') {
-            $results = $results->map(function ($item) {
-                $item['_id'] = (string) $item['_id'];
+        // We can have ObjectId in other fields? for relations?
+        if ($key !== null) {
+            $results = $results->map(function ($item) use ($key) {
+                $item[$key] = (string)$item[$key];
 
                 return $item;
             });
@@ -721,6 +731,10 @@ class Builder extends BaseBuilder
      */
     public function from($collection, $as = null)
     {
+        if ($as !== null) {
+            throw new \InvalidArgumentException('Aliasing collection name is not supported by MongoDB.');
+        }
+
         if ($collection) {
             $this->collection = $this->connection->getCollection($collection);
         }
@@ -744,9 +758,10 @@ class Builder extends BaseBuilder
      *
      * @param  string  $column
      * @param  string  $key
+     * Incorrect return type pluck returns a Collection
      * @return array
      *
-     * @deprecated
+     * @deprecated to remove
      */
     public function lists($column, $key = null)
     {
@@ -764,18 +779,16 @@ class Builder extends BaseBuilder
         }
 
         // Create an expression for the given value
-        if ($expression !== null) {
-            return new Expression($expression);
-        }
+        return new Expression($expression);
 
         // Quick access to the mongodb collection
-        return $this->collection;
+        // strange feature, the return type should be Expression.
     }
 
     /**
      * Append one or more values to an array.
      *
-     * @param  mixed  $column
+     * @param  array|string  $column
      * @param  mixed  $value
      * @param  bool  $unique
      * @return int
@@ -786,9 +799,15 @@ class Builder extends BaseBuilder
         $operator = $unique ? '$addToSet' : '$push';
 
         // Check if we are pushing multiple values.
-        $batch = (is_array($value) && array_keys($value) === range(0, count($value) - 1));
+        $batch = (is_array($value) && array_is_list($value));
 
         if (is_array($column)) {
+            // What is it for? $value is ignored
+            // https://www.mongodb.com/docs/manual/reference/operator/update/push/
+            if ($value !== null) {
+                throw new \InvalidArgumentException('You can only pass $value argument to push() when using an array for the column.');
+            }
+
             $query = [$operator => $column];
         } elseif ($batch) {
             $query = [$operator => [$column => ['$each' => $value]]];
@@ -802,7 +821,7 @@ class Builder extends BaseBuilder
     /**
      * Remove one or more values from an array.
      *
-     * @param  mixed  $column
+     * @param  array|string  $column
      * @param  mixed  $value
      * @return int
      */
@@ -815,6 +834,10 @@ class Builder extends BaseBuilder
         $operator = $batch ? '$pullAll' : '$pull';
 
         if (is_array($column)) {
+            if ($value !== null) {
+                throw new \InvalidArgumentException('You can only pass $value argument to push() when using an string for the column.');
+            }
+
             $query = [$operator => $column];
         } else {
             $query = [$operator => [$column => $value]];
@@ -826,15 +849,12 @@ class Builder extends BaseBuilder
     /**
      * Remove one or more fields.
      *
-     * @param  mixed  $columns
+     * @param  array|string  $columns
      * @return int
      */
     public function drop($columns)
     {
-        if (! is_array($columns)) {
-            $columns = [$columns];
-        }
-
+        $columns = (array) $columns;
         $fields = [];
 
         foreach ($columns as $column) {
@@ -871,7 +891,7 @@ class Builder extends BaseBuilder
         $options = $this->inheritConnectionOptions($options);
 
         $wheres = $this->compileWheres();
-        $result = $this->collection->UpdateMany($wheres, $query, $options);
+        $result = $this->collection->updateMany($wheres, $query, $options);
         if (1 == (int) $result->isAcknowledged()) {
             return $result->getModifiedCount() ? $result->getModifiedCount() : $result->getUpsertedCount();
         }
@@ -906,12 +926,9 @@ class Builder extends BaseBuilder
         $params = func_get_args();
 
         // Remove the leading $ from operators.
-        if (func_num_args() == 3) {
-            $operator = &$params[1];
-
-            if (Str::startsWith($operator, '$')) {
-                $operator = substr($operator, 1);
-            }
+        // I need to understand this hack, why only when $boolean is not provided?
+        if (func_num_args() === 3) {
+            $params[1] = ltrim($params[1], '$');
         }
 
         return parent::where(...$params);
@@ -933,9 +950,10 @@ class Builder extends BaseBuilder
         foreach ($wheres as $i => &$where) {
             // Make sure the operator is in lowercase.
             if (isset($where['operator'])) {
-                $where['operator'] = strtolower($where['operator']);
+                $where[' operator'] = strtolower($where['operator']);
 
                 // Operator conversions
+                // There is $operatorConvertion that contains other conversions
                 $convert = [
                     'regexp' => 'regex',
                     'elemmatch' => 'elemMatch',
@@ -1086,6 +1104,7 @@ class Builder extends BaseBuilder
      * @param  array  $where
      * @return mixed
      */
+    // what calls this methods?
     protected function compileWhereNested(array $where): mixed
     {
         extract($where);

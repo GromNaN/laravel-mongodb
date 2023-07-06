@@ -12,6 +12,7 @@ use Jenssegers\Mongodb\Relations\HasOne;
 use Jenssegers\Mongodb\Relations\MorphMany;
 use Jenssegers\Mongodb\Relations\MorphTo;
 
+// Documentation ?
 trait HybridRelations
 {
     /**
@@ -134,7 +135,7 @@ trait HybridRelations
         // the calling method's name and use that as the relationship name as most
         // of the time this will be what we desire to use for the relationships.
         if ($relation === null) {
-            [$current, $caller] = debug_backtrace(false, 2);
+            [, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
 
             $relation = $caller['function'];
         }
@@ -178,7 +179,7 @@ trait HybridRelations
         // since that is most likely the name of the polymorphic interface. We can
         // use that to get both the class and foreign key that will be utilized.
         if ($name === null) {
-            [$current, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+            [, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
 
             $name = $caller['function'];
         }

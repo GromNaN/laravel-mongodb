@@ -30,7 +30,7 @@ class Builder extends \Illuminate\Database\Schema\Builder
      */
     public function hasCollection($name)
     {
-        $db = $this->connection->getMongoDB();
+        $db = $this->connection->getDatabase();
 
         $collections = iterator_to_array($db->listCollections([
             'filter' => [
@@ -135,7 +135,7 @@ class Builder extends \Illuminate\Database\Schema\Builder
      */
     public function getCollection($name)
     {
-        $db = $this->connection->getMongoDB();
+        $db = $this->connection->getDatabase();
 
         $collections = iterator_to_array($db->listCollections([
             'filter' => [
@@ -154,7 +154,7 @@ class Builder extends \Illuminate\Database\Schema\Builder
     protected function getAllCollections()
     {
         $collections = [];
-        foreach ($this->connection->getMongoDB()->listCollections() as $collection) {
+        foreach ($this->connection->getDatabase()->listCollections() as $collection) {
             $collections[] = $collection->getName();
         }
 

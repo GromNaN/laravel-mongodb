@@ -2,6 +2,7 @@
 
 namespace Jenssegers\Mongodb\Eloquent;
 
+use Carbon\CarbonInterface;
 use function array_key_exists;
 use DateTimeInterface;
 use function explode;
@@ -86,6 +87,8 @@ abstract class Model extends BaseModel
 
     /**
      * @inheritdoc
+     *
+     * @return UTCDateTime
      */
     public function fromDateTime($value)
     {
@@ -104,6 +107,8 @@ abstract class Model extends BaseModel
 
     /**
      * @inheritdoc
+     *
+     * @param UTCDateTime|CarbonInterface|DateTimeInterface|int|string $value
      */
     protected function asDateTime($value)
     {
@@ -151,7 +156,7 @@ abstract class Model extends BaseModel
     public function getAttribute($key)
     {
         if (! $key) {
-            return;
+            return null;
         }
 
         // Dot notation support.

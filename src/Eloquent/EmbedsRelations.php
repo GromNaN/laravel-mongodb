@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Jenssegers\Mongodb\Relations\EmbedsMany;
 use Jenssegers\Mongodb\Relations\EmbedsOne;
 
+// Documentation ?
 trait EmbedsRelations
 {
     /**
@@ -23,7 +24,8 @@ trait EmbedsRelations
         // the calling method's name and use that as the relationship name as most
         // of the time this will be what we desire to use for the relationships.
         if ($relation === null) {
-            [, $caller] = debug_backtrace(false);
+            // Black magic. The call may be optimized to get only the method name.
+            [, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
 
             $relation = $caller['function'];
         }
@@ -58,7 +60,8 @@ trait EmbedsRelations
         // the calling method's name and use that as the relationship name as most
         // of the time this will be what we desire to use for the relationships.
         if ($relation === null) {
-            [, $caller] = debug_backtrace(false);
+            // Black magic. The call may be optimized to get only the method name.
+            [, $caller] = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
 
             $relation = $caller['function'];
         }

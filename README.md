@@ -1179,6 +1179,7 @@ class Message extends Model
 
 ### Authentication
 
+// Could be simplified if we get rid of the custom PasswordResetServiceProvider
 If you want to use Laravel's native Auth functionality, register this included service provider:
 
 ```php

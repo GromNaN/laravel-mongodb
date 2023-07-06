@@ -18,6 +18,7 @@ class DatabaseTokenRepository extends BaseDatabaseTokenRepository
         return [
             'email' => $email,
             'token' => $this->hasher->make($token),
+            // why is it necessary ? vs "new Carbon" in parent class
             'created_at' => new UTCDateTime(Date::now()->format('Uv')),
         ];
     }
@@ -27,6 +28,7 @@ class DatabaseTokenRepository extends BaseDatabaseTokenRepository
      */
     protected function tokenExpired($createdAt)
     {
+        // Could be removed if Carbon was natively suported?
         $createdAt = $this->convertDateTime($createdAt);
 
         return parent::tokenExpired($createdAt);
