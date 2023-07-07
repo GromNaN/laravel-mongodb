@@ -8,12 +8,15 @@ use DateTime;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\LazyCollection;
 use Illuminate\Testing\Assert;
+use Illuminate\Tests\Database\DatabaseQueryBuilderTest;
 use Jenssegers\Mongodb\Collection;
+use Jenssegers\Mongodb\Connection;
 use Jenssegers\Mongodb\Query\Builder;
+use Jenssegers\Mongodb\Query\Processor;
 use Jenssegers\Mongodb\Tests\Models\Item;
 use Jenssegers\Mongodb\Tests\Models\User;
+use Mockery as m;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\Regex;
 use MongoDB\BSON\UTCDateTime;
@@ -840,20 +843,89 @@ class QueryBuilderTest extends TestCase
         $this->assertEquals('fork', $results[0]['name']);
     }
 
-    public function testCursor()
+    public function testOrderBy()
     {
-        $data = [
-            ['name' => 'fork', 'tags' => ['sharp', 'pointy']],
-            ['name' => 'spork', 'tags' => ['sharp', 'pointy', 'round', 'bowl']],
-            ['name' => 'spoon', 'tags' => ['round', 'bowl']],
-        ];
-        DB::collection('items')->insert($data);
+        DB::collection('items')->insert([
+            ['name' => 'alpha'],
+            ['name' => 'gamma'],
+            ['name' => 'beta'],
+        ]);
+        $result = DB::collection('items')->orderBy('name', 'desc')->get();
 
-        $results = DB::collection('items')->orderBy('_id', 'asc')->cursor();
+        $result = $result->map(function ($item) {
+            return $item['name'];
+        });
 
-        $this->assertInstanceOf(LazyCollection::class, $results);
-        foreach ($results as $i => $result) {
-            $this->assertEquals($data[$i]['name'], $result['name']);
-        }
+        $this->assertSame(['gamma', 'beta', 'alpha'], $result->toArray());
+    }
+
+    public function testLimitOffset()
+    {
+        DB::collection('items')->insert([
+            ['name' => 'alpha'],
+            ['name' => 'gamma'],
+            ['name' => 'beta'],
+        ]);
+
+        // Offset only
+        $result = DB::collection('items')->orderBy('name')->offset(1)->get();
+        $this->assertSame(['beta', 'gamma'], $result->map(function ($item) { return $item['name']; })->toArray());
+
+        // Limit only
+        $result = DB::collection('items')->orderBy('name')->limit(2)->get();
+        $this->assertSame(['alpha', 'beta'], $result->map(function ($item) { return $item['name']; })->toArray());
+
+        // Limit and offset
+        $result = DB::collection('items')->orderBy('name')->limit(1)->offset(1)->get();
+        $this->assertSame(['beta'], $result->map(function ($item) { return $item['name']; })->toArray());
+
+        // Empty result
+        $result = DB::collection('items')->orderBy('name')->offset(5)->get();
+        $this->assertSame([], $result->toArray());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testLimitsAndOffsets() */
+    public function testLimitsAndOffsets()
+    {
+        $builder = $this->getBuilder();
+        $builder->select('*')->offset(5)->limit(10);
+        $this->assertSame(['find' => [[], ['skip' => 5, 'limit' => 10, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->limit(10)->limit(null);
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->limit(0);
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->skip(5)->take(10);
+        $this->assertSame(['find' => [[], ['skip' => 5, 'limit' => 10, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->skip(0)->take(0);
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->skip(-5)->take(-10);
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->skip(null)->take(null);
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->select('*')->skip(5)->take(null);
+        $this->assertSame(['find' => [[], ['skip' => 5, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+    }
+
+    protected function getBuilder()
+    {
+        $connection = m::mock(Connection::class);
+        $processor = m::mock(Processor::class);
+        $connection->shouldReceive('getSession')->andReturn(null);
+
+        return new Builder($connection, $processor);
     }
 }
