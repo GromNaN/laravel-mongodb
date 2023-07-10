@@ -83,6 +83,7 @@ class Builder extends BaseBuilder
         'not like',
         'between',
         'ilike',
+        'not ilike',
         '&',
         '|',
         '^',
@@ -1070,12 +1071,9 @@ class Builder extends BaseBuilder
         extract($where);
 
         // Replace like or not like with a Regex instance.
-        if (in_array($operator, ['like', 'not like'])) {
-            if ($operator === 'not like') {
-                $operator = 'not';
-            } else {
-                $operator = '=';
-            }
+        if (in_array($operator, ['like', 'not like', 'ilike', 'not ilike'])) {
+            $flags = str_ends_with($operator, 'ilike') ? 'i' : '';
+            $operator = str_starts_with($operator, 'not') ? 'not' : '=';
 
             // Convert to regular expression.
             $regex = preg_replace('#(^|[^\\\])%#', '$1.*', preg_quote($value));
@@ -1088,7 +1086,7 @@ class Builder extends BaseBuilder
                 $regex .= '$';
             }
 
-            $value = new Regex($regex, 'i');
+            $value = new Regex($regex, $flags);
         } // Manipulate regexp operations.
         elseif (in_array($operator, ['regexp', 'not regexp', 'regex', 'not regex'])) {
             // Automatically convert regular expression strings to Regex objects.

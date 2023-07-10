@@ -1022,25 +1022,50 @@ class QueryBuilderTest extends TestCase
         ]], $builder->toMql());
     }
 
-
-    /** @see DatabaseQueryBuilderTest::testDateBasedWheresAcceptsTwoArguments() */
-    public function testDateBasedWheresAcceptsTwoArguments()
+    /** @see DatabaseQueryBuilderTest::testWhereLikePostgres() */
+    public function testWhereLike()
     {
         $builder = $this->getBuilder();
-        $builder->whereDate('created_at', 1);
-        $this->assertSame('select * from `users` where date(`created_at`) = ?', $builder->toSql());
+        $builder->where('id', 'like', '1');
+        $this->assertEquals(['find' => [
+            ['id' => new Regex('^1$')],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
 
         $builder = $this->getBuilder();
-        $builder->whereDay('created_at', 1);
-        $this->assertSame('select * from `users` where day(`created_at`) = ?', $builder->toSql());
+        $builder->where('id', 'like', '%{#}%');
+        $this->assertEquals(['find' => [
+            ['id' => new Regex('.*\{\#\}.*')],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
 
         $builder = $this->getBuilder();
-        $builder->whereMonth('created_at', 1);
-        $this->assertSame('select * from `users` where month(`created_at`) = ?', $builder->toSql());
+        $builder->where('id', 'LIKE', '1');
+        $this->assertEquals(['find' => [
+            ['id' => new Regex('^1$')],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
 
         $builder = $this->getBuilder();
-        $builder->whereYear('created_at', 1);
-        $this->assertSame('select * from `users` where year(`created_at`) = ?', $builder->toSql());
+        $builder->where('id', 'ilike', '1');
+        $this->assertEquals(['find' => [
+            ['id' => new Regex('^1$', 'i')],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', 'not like', '1');
+        $this->assertEquals(['find' => [
+            ['id' => ['$not' => new Regex('^1$')]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', 'not ilike', '1');
+        $this->assertEquals(['find' => [
+            ['id' => ['$not' => new Regex('^1$', 'i')]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
     }
 
     /** @see DatabaseQueryBuilderTest::testWhereBetweens() */
