@@ -2,6 +2,7 @@
 
 namespace Jenssegers\Mongodb\Query;
 
+use Carbon\CarbonPeriod;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Query\Builder as BaseBuilder;
@@ -402,8 +403,12 @@ class Builder extends BaseBuilder
     public function getFresh($columns = [], $returnLazy = false)
     {
         $command = $this->toMql($columns);
+        assert(count($command) >= 1, 'At least one method call is required to execute a query');
 
-        $result = call_user_func_array([$this->collection, key($command)], current($command));
+        $result = $this->collection;
+        foreach ($command as $method => $arguments) {
+            $result = call_user_func_array([$result, $method], $arguments);
+        }
 
         // Wrap "count" results in an array
         if (is_int($result)) {
@@ -508,11 +513,21 @@ class Builder extends BaseBuilder
 
     /**
      * @inheritdoc
+     * @param int|string $direction
      */
     public function orderBy($column, $direction = 'asc')
     {
         if (is_string($direction)) {
-            $direction = (strtolower($direction) == 'asc' ? 1 : -1);
+            switch (strtolower($direction)) {
+                case 'asc':
+                    $direction = 1;
+                    break;
+                case 'desc':
+                    $direction = -1;
+                    break;
+                default:
+                    throw new \InvalidArgumentException('Order direction must be "asc" or "desc".');
+            }
         }
 
         if ($column == 'natural') {
@@ -982,11 +997,22 @@ class Builder extends BaseBuilder
                     }
                 }
             } elseif (isset($where['values'])) {
-                array_walk_recursive($where['values'], function (&$item, $key) {
-                    if ($item instanceof DateTimeInterface) {
-                        $item = new UTCDateTime($item->format('Uv'));
-                    }
-                });
+                if (is_array($where['values'])) {
+                    array_walk_recursive($where['values'], function (&$item) {
+                        if ($item instanceof DateTimeInterface) {
+                            $item = new UTCDateTime($item->format('Uv'));
+                        }
+                    });
+                }
+            }
+
+            $not = false;
+            if ($where['boolean'] === 'and not') {
+                $where['boolean'] = 'and';
+                $not = true;
+            } elseif ($where['boolean'] === 'or not') {
+                $where['boolean'] = 'or';
+                $not = true;
             }
 
             // The next item in a "chain" of wheres devices the boolean of the
@@ -999,6 +1025,10 @@ class Builder extends BaseBuilder
             // We use different methods to compile different wheres.
             $method = "compileWhere{$where['type']}";
             $result = $this->{$method}($where);
+
+            if ($not) {
+                $result = ['$not' => $result];
+            }
 
             // Wrap the where with an $or operator.
             if ($where['boolean'] == 'or') {
@@ -1104,7 +1134,7 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        return [$column => ['$in' => array_values($values)]];
+        return [$column => ['$in' => Arr::flatten($values)]];
     }
 
     /**
@@ -1149,6 +1179,12 @@ class Builder extends BaseBuilder
     protected function compileWhereBetween(array $where): array
     {
         extract($where);
+
+        if ($values instanceof CarbonPeriod) {
+            $values = [new UTCDateTime($values->start->format('Uv')), new UTCDateTime($values->end->format('Uv'))];
+        } else {
+            $values = Arr::flatten($values);
+        }
 
         if ($not) {
             return [
@@ -1289,5 +1325,65 @@ class Builder extends BaseBuilder
         }
 
         return parent::__call($method, $parameters);
+    }
+
+    /** @see Builder::toMql() */
+    public function toSql()
+    {
+        return $this->toMql();
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function whereColumn($first, $operator = null, $second = null, $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function whereFullText($columns, $value, array $options = [], $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function groupByRaw($sql, array $bindings = [])
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function orderByRaw($sql, $bindings = [])
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function unionAll($query)
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function union($query, $all = false)
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function having($column, $operator = null, $value = null, $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function havingRaw($sql, array $bindings = [], $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function havingBetween($column, iterable $values, $boolean = 'and', $not = false)
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
     }
 }

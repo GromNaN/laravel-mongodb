@@ -884,6 +884,614 @@ class QueryBuilderTest extends TestCase
         $this->assertSame([], $result->toArray());
     }
 
+
+    /** @dataProvider getEloquentMethodsNotSupported */
+    public function testEloquentMethodsNotSupported(\Closure $callback)
+    {
+        $this->expectException(\BadMethodCallException::class);
+        $this->expectExceptionMessage('This method is not supported by MongoDB');
+
+        $builder = $this->getBuilder();
+        call_user_func($callback, $builder);
+    }
+
+    public function getEloquentMethodsNotSupported()
+    {
+        // Most of this methods can be implemented using aggregation framework
+        // whereInRaw, whereNotInRaw, orWhereInRaw, orWhereNotInRaw, whereBetweenColumns
+
+        /** @see DatabaseQueryBuilderTest::testBasicWhereColumn() */
+        /** @see DatabaseQueryBuilderTest::testArrayWhereColumn() */
+        yield 'whereColumn' => [fn (Builder $builder) => $builder->whereColumn('first_name', 'last_name')];
+        yield 'orWhereColumn' => [fn (Builder $builder) => $builder->orWhereColumn('first_name', 'last_name')];
+
+        /** @see DatabaseQueryBuilderTest::testWhereFulltextMySql() */
+        yield 'whereFulltext' => [fn (Builder $builder) => $builder->whereFulltext('body', 'Hello World')];
+
+        /** @see DatabaseQueryBuilderTest::testGroupBys() */
+        yield 'groupByRaw' => [fn (Builder $builder) => $builder->groupByRaw('DATE(created_at)')];
+
+        /** @see DatabaseQueryBuilderTest::testOrderBys() */
+        yield 'orderByRaw' => [fn (Builder $builder) => $builder->orderByRaw('"age" ? desc', ['foo'])];
+
+        /** @see DatabaseQueryBuilderTest::testInRandomOrderMySql */
+        yield 'inRandomOrder' => [fn (Builder $builder) => $builder->inRandomOrder()];
+
+        yield 'union' => [fn (Builder $builder) => $builder->union($builder)];
+        yield 'unionAll' => [fn (Builder $builder) => $builder->unionAll($builder)];
+
+        /** @see DatabaseQueryBuilderTest::testRawHavings */
+        yield 'havingRaw' => [fn (Builder $builder) => $builder->havingRaw('user_foo < user_bar')];
+        yield 'having' => [fn (Builder $builder) => $builder->having('baz', '=', 1)];
+        yield 'havingBetween' => [fn (Builder $builder) => $builder->havingBetween('last_login_date', ['2018-11-16', '2018-12-16'])];
+        yield 'orHavingRaw' => [fn (Builder $builder) => $builder->orHavingRaw('user_foo < user_bar')];
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicSelectDistinctOnColumns() */
+    public function testBasicSelectDistinctOnColumns()
+    {
+        $builder = $this->getBuilder();
+        $builder->distinct('foo')->select('foo', 'bar');
+        $this->assertSame(['distinct' => ['foo', [], []]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testAddingSelects() */
+    public function testAddingSelects()
+    {
+        $builder = $this->getBuilder();
+        $builder->select('foo')->addSelect('bar')->addSelect(['baz', 'boom'])->addSelect('bar');
+        $this->assertSame(['find' => [
+            [],
+            ['projection' => ['foo' => true, 'bar' => true, 'baz' => true, 'boom' => true], 'typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicSelectDistinct() */
+    public function testBasicSelectDistinct()
+    {
+        $builder = $this->getBuilder();
+        $builder->distinct()->select('foo', 'bar');
+        $this->assertSame(['distinct' => ['foo', [], []]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWheres() */
+    public function testBasicWheres()
+    {
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1);
+        $this->assertSame(['find' => [
+            ['id' => 1],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '!=', 1);
+        $this->assertSame(['find' => [
+            ['id' => ['$ne' => 1]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereNot() */
+    public function testBasicWhereNot()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNot('name', 'foo')->whereNot('name', '<>', 'bar');
+        $this->assertSame(['find' => [
+            ['$and' => [['$not' => ['name' => 'foo']], ['$not' => ['name' => ['$ne' => 'bar']]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testWheresWithArrayValue() */
+    public function testWheresWithArrayValue()
+    {
+        $builder = $this->getBuilder();
+        $builder->where('id', [12]);
+        $this->assertSame(['find' => [
+            ['id' => [12]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', [12, 30]);
+        $this->assertSame(['find' => [
+            ['id' => [12, 30]], // @todo Eloquent asserts ['id' => 12]
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '!=', [12, 30]);
+        $this->assertSame(['find' => [
+            ['id' => ['$ne' => [12, 30]]], // @todo Eloquent asserts ['id' => ['$ne' => 12]]
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '<>', [12, 30]);
+        $this->assertSame(['find' => [
+            ['id' => ['$ne' => [12, 30]]], // @todo Eloquent asserts ['id' => ['$ne' => 12]]
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', [[12, 30]]);
+        $this->assertSame(['find' => [
+            ['id' => [[12, 30]]], // @todo Eloquent asserts ['id' => 12]
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+    }
+
+
+    /** @see DatabaseQueryBuilderTest::testDateBasedWheresAcceptsTwoArguments() */
+    public function testDateBasedWheresAcceptsTwoArguments()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereDate('created_at', 1);
+        $this->assertSame('select * from `users` where date(`created_at`) = ?', $builder->toSql());
+
+        $builder = $this->getBuilder();
+        $builder->whereDay('created_at', 1);
+        $this->assertSame('select * from `users` where day(`created_at`) = ?', $builder->toSql());
+
+        $builder = $this->getBuilder();
+        $builder->whereMonth('created_at', 1);
+        $this->assertSame('select * from `users` where month(`created_at`) = ?', $builder->toSql());
+
+        $builder = $this->getBuilder();
+        $builder->whereYear('created_at', 1);
+        $this->assertSame('select * from `users` where year(`created_at`) = ?', $builder->toSql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testWhereBetweens() */
+    public function testWhereBetweens()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereBetween('id', [1, 2]);
+        $this->assertSame(['find' => [
+            ['id' => ['$gte' => 1, '$lte' => 2]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->whereBetween('id', [[1, 2, 3]]);
+        $this->assertSame(['find' => [
+            ['id' => ['$gte' => 1, '$lte' => 2]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->whereBetween('id', [[1], [2, 3]]);
+        $this->assertSame(['find' => [
+            ['id' => ['$gte' => 1, '$lte' => 2]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->whereNotBetween('id', [1, 2]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => ['$lte' => 1]], ['id' => ['$gte' => 2]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $period = now()->toPeriod(now()->addDay());
+        $builder->whereBetween('created_at', $period);
+        $this->assertEquals(['find' => [
+            ['created_at' => ['$gte' => new UTCDateTime($period->start->format('Uv')), '$lte' => new UTCDateTime($period->end->format('Uv'))]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        // custom long carbon period date
+        $builder = $this->getBuilder();
+        $period = now()->toPeriod(now()->addMonth());
+        $builder->whereBetween('created_at', $period);
+        $this->assertEquals(['find' => [
+            ['created_at' => ['$gte' => new UTCDateTime($period->start->format('Uv')), '$lte' => new UTCDateTime($period->end->format('Uv'))]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->whereBetween('id', collect([1, 2]));
+        $this->assertSame(['find' => [
+            ['id' => ['$gte' => 1, '$lte' => 2]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testOrWhereBetween() */
+    public function testOrWhereBetween()
+    {
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereBetween('id', [3, 5]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 5]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereBetween('id', [[3, 4, 5]]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereBetween('id', [[3, 5]]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 5]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereBetween('id', [[4], [6, 8]]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$gte' => 4, '$lte' => 6]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereBetween('id', collect([3, 4]));
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testOrWhereNotBetween() */
+    public function testOrWhereNotBetween()
+    {
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotBetween('id', [3, 5]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotBetween('id', [[3, 4, 5]]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotBetween('id', [[3, 5]]);
+        $this->assertSame(['find' => [
+        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]],
+        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotBetween('id', [[4], [6, 8]]);
+        $this->assertSame(['find' => [
+        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 4]], ['id' => ['$gte' => 6]]]]]],
+        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotBetween('id', collect([3, 4]));
+        $this->assertSame(['find' => [
+        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]],
+        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicOrWheres() */
+    public function testBasicOrWheres()
+    {
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhere('email', '=', 'foo');
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['email' => 'foo']]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicOrWhereNot() */
+    public function testBasicOrWhereNot()
+    {
+        $builder = $this->getBuilder();
+        $builder->orWhereNot('name', 'foo')->orWhereNot('name', '<>', 'bar');
+        $this->assertSame(['find' => [
+            // @todo bugfix: incorrect query: ['$and' => [['name' => 'foo'], ['name' => ['$ne' => 'bar']]]],
+            ['$or' => [['$not' => ['name' => 'foo']], ['$not' => ['name' => ['$ne' => 'bar']]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereIns() */
+    public function testBasicWhereIns()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereIn('id', [1, 2, 3]);
+        $this->assertSame(['find' => [
+            ['id' => ['$in' => [1, 2, 3]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        // associative arrays as values:
+        $builder = $this->getBuilder();
+        $builder->whereIn('id', [
+            'issue' => 45582,
+            'id' => 2,
+            3,
+        ]);
+        $this->assertSame(['find' => [
+            ['id' => ['$in' => [45582, 2, 3]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        // can accept some nested arrays as values.
+        $builder = $this->getBuilder();
+        $builder->whereIn('id', [
+            ['issue' => 45582],
+            ['id' => 2],
+            [3],
+        ]);
+        $this->assertSame(['find' => [
+            ['id' => ['$in' => [45582, 2, 3]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereIn('id', [1, 2, 3]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$in' => [1, 2, 3]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereInsException() */
+    public function testBasicWhereInsException()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $builder = $this->getBuilder();
+        $builder->whereIn('id', [
+            [
+                'a' => 1,
+                'b' => 1,
+            ],
+            ['c' => 2],
+            [3],
+        ]);
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereNotIns() */
+    public function testBasicWhereNotIns()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNotIn('id', [1, 2, 3]);
+        $this->assertSame(['find' => [
+            ['id' => ['$nin' => [1, 2, 3]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotIn('id', [1, 2, 3]);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$nin' => [1, 2, 3]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testEmptyWhereIns() */
+    public function testEmptyWhereIns()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereIn('id', []);
+        $this->assertSame(['find' => [
+            ['id' => ['$in' => []]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereIn('id', []);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$in' => []]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testEmptyWhereNotIns() */
+    public function testEmptyWhereNotIns()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNotIn('id', []);
+        $this->assertSame(['find' => [
+            ['id' => ['$nin' => []]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNotIn('id', []);
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => ['$nin' => []]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereNulls() */
+    public function testBasicWhereNulls()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNull('id');
+        $this->assertSame(['find' => [
+            ['id' => null],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('id', '=', 1)->orWhereNull('id');
+        $this->assertSame(['find' => [
+            ['$or' => [['id' => 1], ['id' => null]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testJsonWhereNullMysql() */
+    public function testSubfieldWhereNotNull()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNotNull('items.id');
+        $this->assertSame(['find' => [
+            ['items.id' => ['$ne' => null]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testArrayWhereNulls() */
+    public function testArrayWhereNulls()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNull(['_id', 'expires_at']);
+        $this->assertSame(['find' => [
+            ['$and' => [['_id' => null], ['expires_at' => null]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('_id', '=', 1)->orWhereNull(['_id', 'expires_at']);
+        $this->assertSame(['find' => [
+            ['$or' => [['_id' => 1], ['_id' => null], ['expires_at' => null]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]]
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testBasicWhereNotNulls() */
+    public function testBasicWhereNotNulls()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNotNull('_id');
+        $this->assertSame(['find' => [
+            ['_id' => ['$ne' => null]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('_id', '>', 1)->orWhereNotNull('_id');
+        $this->assertSame(['find' => [
+            ['$or' => [['_id' => ['$gt' => 1]], ['_id' => ['$ne' => null]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testArrayWhereNotNulls() */
+    public function testArrayWhereNotNulls()
+    {
+        $builder = $this->getBuilder();
+        $builder->whereNotNull(['_id', 'expires_at']);
+        $this->assertSame(['find' => [
+            ['$and' => [['_id' => ['$ne' => null]], ['expires_at' => ['$ne' => null]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->where('_id', '>', 1)->orWhereNotNull(['_id', 'expires_at']);
+        // @todo This assertion from Eloquent tests fails
+        $this->assertSame(['find' => [
+            ['$or' => [['_id' => ['$gt' => 1]], ['_id' => ['$ne' => null]], ['expires_at' => ['$ne' => null]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+        ], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testGroupBys() */
+    public function testGroupBys()
+    {
+        $builder = $this->getBuilder();
+        $builder->groupBy('email');
+        $this->assertSame(['aggregate' => [
+            [['$group' => ['_id' => ['email' => '$email'], 'email' => ['$last' => '$email']]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->groupBy('_id', 'email');
+        $this->assertSame(['aggregate' => [
+            [['$group' => ['_id' => ['$last' => '$_id', 'email' => '$email'], 'email' => ['$last' => '$email']]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->groupBy(['_id', 'email']);
+        $this->assertSame(['aggregate' => [
+            [['$group' => ['_id' => ['$last' => '$_id', 'email' => '$email'], 'email' => ['$last' => '$email']]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']],
+        ]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testOrderBys() */
+    public function testOrderBys()
+    {
+        $builder = $this->getBuilder();
+        $builder->orderBy('email')->orderBy('age', 'desc');
+        $this->assertSame(['find' => [[], ['sort' => ['email' => 1, 'age' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder->orders = null;
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder->orders = [];
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder->orderBy('email', -1)->orderBy('age', 1);
+        $this->assertSame(['find' => [[], ['sort' => ['email' => -1, 'age' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testLatest() */
+    public function testLatest()
+    {
+        $builder = $this->getBuilder();
+        $builder->latest();
+        $this->assertSame(['find' => [[], ['sort' => ['created_at' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->latest()->limit(1);
+        $this->assertSame(['find' => [[], ['sort' => ['created_at' => -1], 'limit' => 1, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->latest('updated_at');$this->assertSame(['find' => [[], ['sort' => ['updated_at' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testOldest() */
+    public function testOldest()
+    {
+        $builder = $this->getBuilder();
+        $builder->oldest();
+        $this->assertSame(['find' => [[], ['sort' => ['created_at' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->oldest()->limit(1);
+        $this->assertSame(['find' => [[], ['sort' => ['created_at' => 1], 'limit' => 1, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->oldest('updated_at');$this->assertSame(['find' => [[], ['sort' => ['updated_at' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testReorder() */
+    public function testReorder()
+    {
+        $builder = $this->getBuilder();
+        $builder->orderBy('name');
+        $this->assertSame(['find' => [[], ['sort' => ['name' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+        $builder->reorder();
+        $this->assertSame(['find' => [[], ['typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+
+        $builder = $this->getBuilder();
+        $builder->orderBy('name');
+        $this->assertSame(['find' => [[], ['sort' => ['name' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+        $builder->reorder('email', 'desc');
+        $this->assertSame(['find' => [[], ['sort' => ['email' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+    }
+
+    /** @see DatabaseQueryBuilderTest::testOrderByInvalidDirectionParam() */
+    public function testOrderByInvalidDirectionParam()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $builder = $this->getBuilder();
+        $builder->orderBy('age', 'asec');
+    }
+
     /** @see DatabaseQueryBuilderTest::testLimitsAndOffsets() */
     public function testLimitsAndOffsets()
     {
