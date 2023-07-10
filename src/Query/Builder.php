@@ -217,7 +217,9 @@ class Builder extends BaseBuilder
     }
 
     /**
-     * Return the Mongo Query to be run in the form of a 1 element array like ['method' => [arguments]].
+     * Return the MongoDB Query to be run in the form of an element array like ['method' => [arguments]].
+     *
+     * Example: ['find' => [['name' => 'John Doe'], ['projection' => ['birthday' => 1]]]]
      *
      * @param $columns
      * @return array<string, mixed[]>
