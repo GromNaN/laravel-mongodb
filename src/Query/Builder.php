@@ -984,19 +984,19 @@ class Builder extends BaseBuilder
                 if (is_array($where['value'])) {
                     array_walk_recursive($where['value'], function (&$item, $key) {
                         if ($item instanceof DateTimeInterface) {
-                            $item = new UTCDateTime($item->format('Uv'));
+                            $item = new UTCDateTime($item);
                         }
                     });
                 } else {
                     if ($where['value'] instanceof DateTimeInterface) {
-                        $where['value'] = new UTCDateTime($where['value']->format('Uv'));
+                        $where['value'] = new UTCDateTime($where['value']);
                     }
                 }
             } elseif (isset($where['values'])) {
                 if (is_array($where['values'])) {
                     array_walk_recursive($where['values'], function (&$item) {
                         if ($item instanceof DateTimeInterface) {
-                            $item = new UTCDateTime($item->format('Uv'));
+                            $item = new UTCDateTime($item);
                         }
                     });
                 }
@@ -1174,7 +1174,7 @@ class Builder extends BaseBuilder
         extract($where);
 
         if ($values instanceof CarbonPeriod) {
-            $values = [new UTCDateTime($values->start->format('Uv')), new UTCDateTime($values->end->format('Uv'))];
+            $values = [new UTCDateTime($values->start), new UTCDateTime($values->end)];
         } else {
             $values = Arr::flatten($values);
         }
