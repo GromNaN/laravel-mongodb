@@ -277,17 +277,10 @@ class Builder extends BaseBuilder
                         $column = implode('.', $splitColumns);
                     }
 
-                    // Null coalense only > 7.2
-
                     $aggregations = blank($this->aggregate['columns']) ? [] : $this->aggregate['columns'];
 
                     if (in_array('*', $aggregations) && $function == 'count') {
-                        // When ORM is paginating, count doesn't need an aggregation, just a cursor operation
-                        // elseif added to use this only in pagination
-                        // https://docs.mongodb.com/manual/reference/method/cursor.count/
-                        // count method returns int
-
-                        return ['count' => [$wheres, []]];
+                        return ['countDocuments' => [$wheres, []]];
                     } elseif ($function == 'count') {
                         // Translate count into sum.
                         $group['aggregate'] = ['$sum' => 1];
@@ -413,7 +406,7 @@ class Builder extends BaseBuilder
             $result = call_user_func_array([$result, $method], $arguments);
         }
 
-        // Wrap "count" results in an array
+        // countDocuments method returns int, wrap it to the format expected by the framework
         if (is_int($result)) {
             $result = [
                 [
@@ -431,8 +424,8 @@ class Builder extends BaseBuilder
             });
         }
 
-        if ($result instanceof \Traversable) {
-            $result = iterator_to_array($result);
+        if ($result instanceof Cursor) {
+            $result = $result->toArray();
         }
 
         return new Collection($result);
@@ -529,7 +522,7 @@ class Builder extends BaseBuilder
                     $direction = -1;
                     break;
                 default:
-                    throw new \InvalidArgumentException('Order direction must be "asc" or "desc".');
+                    throw new \InvalidArgumentException('Order direction must be "asc" or "desc"');
             }
         }
 

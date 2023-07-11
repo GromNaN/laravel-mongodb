@@ -895,7 +895,7 @@ class QueryBuilderTest extends TestCase
         call_user_func($callback, $builder);
     }
 
-    public function getEloquentMethodsNotSupported()
+    public static function getEloquentMethodsNotSupported()
     {
         // Most of this methods can be implemented using aggregation framework
         // whereInRaw, whereNotInRaw, orWhereInRaw, orWhereNotInRaw, whereBetweenColumns
@@ -1183,22 +1183,22 @@ class QueryBuilderTest extends TestCase
         $builder = $this->getBuilder();
         $builder->where('id', '=', 1)->orWhereNotBetween('id', [[3, 5]]);
         $this->assertSame(['find' => [
-        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]],
-        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+            ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
         ], $builder->toMql());
 
         $builder = $this->getBuilder();
         $builder->where('id', '=', 1)->orWhereNotBetween('id', [[4], [6, 8]]);
         $this->assertSame(['find' => [
-        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 4]], ['id' => ['$gte' => 6]]]]]],
-        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+            ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 4]], ['id' => ['$gte' => 6]]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
         ], $builder->toMql());
 
         $builder = $this->getBuilder();
         $builder->where('id', '=', 1)->orWhereNotBetween('id', collect([3, 4]));
         $this->assertSame(['find' => [
-        ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]],
-        ['typeMap' => ['root' => 'array', 'document' => 'array']]],
+            ['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]],
+            ['typeMap' => ['root' => 'array', 'document' => 'array']]],
         ], $builder->toMql());
     }
 
