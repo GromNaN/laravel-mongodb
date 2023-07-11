@@ -218,7 +218,7 @@ class Builder extends BaseBuilder
     }
 
     /**
-     * Return the MongoDB Query to be run in the form of an element array like ['method' => [arguments]].
+     * Return the MongoDB query to be run in the form of an element array like ['method' => [arguments]].
      *
      * Example: ['find' => [['name' => 'John Doe'], ['projection' => ['birthday' => 1]]]]
      *

@@ -1273,10 +1273,7 @@ class QueryBuilderTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $builder = $this->getBuilder();
         $builder->whereIn('id', [
-            [
-                'a' => 1,
-                'b' => 1,
-            ],
+            ['a' => 1, 'b' => 1],
             ['c' => 2],
             [3],
         ]);
@@ -1474,7 +1471,8 @@ class QueryBuilderTest extends TestCase
         $this->assertSame(['find' => [[], ['sort' => ['created_at' => -1], 'limit' => 1, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
 
         $builder = $this->getBuilder();
-        $builder->latest('updated_at');$this->assertSame(['find' => [[], ['sort' => ['updated_at' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+        $builder->latest('updated_at');
+        $this->assertSame(['find' => [[], ['sort' => ['updated_at' => -1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
     }
 
     /** @see DatabaseQueryBuilderTest::testOldest() */
@@ -1489,7 +1487,8 @@ class QueryBuilderTest extends TestCase
         $this->assertSame(['find' => [[], ['sort' => ['created_at' => 1], 'limit' => 1, 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
 
         $builder = $this->getBuilder();
-        $builder->oldest('updated_at');$this->assertSame(['find' => [[], ['sort' => ['updated_at' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
+        $builder->oldest('updated_at');
+        $this->assertSame(['find' => [[], ['sort' => ['updated_at' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array']]]], $builder->toMql());
     }
 
     /** @see DatabaseQueryBuilderTest::testReorder() */
