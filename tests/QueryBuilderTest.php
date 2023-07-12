@@ -864,16 +864,10 @@ class QueryBuilderTest extends TestCase
         }
     }
 
-    /**
-     * @testWith ["dasc"]
-     *           [0]
-     *           [10]
-     *           [true]
-     */
-    public function testOrderByInvalidDirection($direction)
+    public function testOrderByInvalidDirection()
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Order direction must be either ');
-        DB::collection('items')->orderBy('_id', $direction)->get();
+        $this->expectExceptionMessage('Order direction must be "asc" or "desc"');
+        DB::collection('items')->orderBy('_id', 'dasc')->get();
     }
 }

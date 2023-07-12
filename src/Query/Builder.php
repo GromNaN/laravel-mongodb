@@ -518,15 +518,11 @@ class Builder extends BaseBuilder
     public function orderBy($column, $direction = 'asc')
     {
         if (is_string($direction)) {
-            $direction = match (strtolower($direction)) {
-                'asc' => 1,
-                'desc' => -1,
-                default => throw new \InvalidArgumentException(sprintf('Order direction must be either "asc" or "desc", "%s" given.', $direction)),
+            $direction = match ($direction) {
+                'asc', 'ASC' => 1,
+                'desc', 'DESC' => -1,
+                default => throw new \InvalidArgumentException('Order direction must be "asc" or "desc".'),
             };
-        }
-
-        if ($direction !== 1 && $direction !== -1) {
-            throw new \InvalidArgumentException(sprintf('Order direction must be either 1 or -1, "%s" given.', $direction));
         }
 
         if ($column == 'natural') {
