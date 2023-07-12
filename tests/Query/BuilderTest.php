@@ -43,32 +43,32 @@ class BuilderTest extends TestCase
          */
         $date = new DateTimeImmutable('2016-07-12 15:30:00');
 
-        yield [
+        yield 'find' => [
             ['find' => [['foo' => 'bar'], []]],
             fn (Builder $builder) => $builder->where('foo', 'bar'),
         ];
 
-        yield [
+        yield 'find > date' => [
             ['find' => [['foo' => ['$gt' => new UTCDateTime($date)]], []]],
             fn (Builder $builder) => $builder->where('foo', '>', $date),
         ];
 
-        yield [
+        yield 'find in array' => [
             ['find' => [['foo' => ['$in' => ['bar', 'baz']]], []]],
             fn (Builder $builder) => $builder->whereIn('foo', ['bar', 'baz']),
         ];
 
-        yield [
+        yield 'find limit offset select' => [
             ['find' => [[], ['limit' => 10, 'skip' => 5, 'projection' => ['foo' => 1, 'bar' => 1]]]],
             fn (Builder $builder) => $builder->limit(10)->offset(5)->select('foo', 'bar'),
         ];
 
-        yield [
+        yield 'distinct' => [
             ['distinct' => ['foo', [], []]],
             fn (Builder $builder) => $builder->distinct('foo'),
         ];
 
-        yield [
+        yield 'groupBy' => [
             ['aggregate' => [[['$group' => ['_id' => ['foo' => '$foo'], 'foo' => ['$last' => '$foo']]]], []]],
             fn (Builder $builder) => $builder->groupBy('foo'),
         ];
