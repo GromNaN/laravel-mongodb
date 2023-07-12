@@ -973,18 +973,18 @@ class Builder extends BaseBuilder
                 if (is_array($where['value'])) {
                     array_walk_recursive($where['value'], function (&$item, $key) {
                         if ($item instanceof DateTimeInterface) {
-                            $item = new UTCDateTime($item->format('Uv'));
+                            $item = new UTCDateTime($item);
                         }
                     });
                 } else {
                     if ($where['value'] instanceof DateTimeInterface) {
-                        $where['value'] = new UTCDateTime($where['value']->format('Uv'));
+                        $where['value'] = new UTCDateTime($where['value']);
                     }
                 }
             } elseif (isset($where['values'])) {
                 array_walk_recursive($where['values'], function (&$item, $key) {
                     if ($item instanceof DateTimeInterface) {
-                        $item = new UTCDateTime($item->format('Uv'));
+                        $item = new UTCDateTime($item);
                     }
                 });
             }
