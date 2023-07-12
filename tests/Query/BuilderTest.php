@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Jenssegers\Mongodb\Tests\Query;
 
 use DateTimeImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Tests\Database\DatabaseQueryBuilderTest;
 use Jenssegers\Mongodb\Connection;
 use Jenssegers\Mongodb\Query\Builder;
@@ -124,6 +125,122 @@ class BuilderTest extends TestCase
                 ->orderBy('score', ['$meta' => 'textScore']),
         ];
 
+        /** @see DatabaseQueryBuilderTest::testWhereBetweens() */
+        yield 'whereBetween array of numbers' => [
+            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []]],
+            fn (Builder $builder) => $builder->whereBetween('id', [1, 2]),
+        ];
+
+        /*
+        yield 'whereBetween excessive nested array of numbers' => [
+            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []],
+            fn (Builder $builder) => $builder->whereBetween('id', [[1, 2, 3]]),
+        ];
+
+        yield 'whereBetween nested array of numbers' => [
+            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []]],
+            fn (Builder $builder) => $builder->whereBetween('id', [[1], [2, 3]]),
+        ];
+        */
+
+        yield 'whereNotBetween array of numbers' => [
+            ['find' => [['$or' => [['id' => ['$lte' => 1]], ['id' => ['$gte' => 2]]]], []]],
+            fn (Builder $builder) => $builder->whereNotBetween('id', [1, 2]),
+        ];
+
+        $period = now()->toPeriod(now()->addDay());
+        yield 'whereBetween CarbonPeriod' => [
+            ['find' => [['created_at' => ['$gte' => new UTCDateTime($period->start), '$lte' => new UTCDateTime($period->end)]], []]],
+            fn (Builder $builder) => $builder->whereBetween('created_at', $period),
+        ];
+
+        $period = now()->toPeriod(now()->addMonth());
+        yield 'custom long carbon period date' => [
+            ['find' => [['created_at' => ['$gte' => new UTCDateTime($period->start), '$lte' => new UTCDateTime($period->end)]], []]],
+            fn (Builder $builder) => $builder->whereBetween('created_at', $period),
+        ];
+
+        yield 'whereBetween collection' => [
+            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []]],
+            fn (Builder $builder) => $builder->whereBetween('id', collect([1, 2])),
+        ];
+
+        /** @see DatabaseQueryBuilderTest::testOrWhereBetween() */
+        yield 'whereBetween array numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 5]]]], []]],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereBetween('id', [3, 5]),
+        ];
+
+        /*
+        yield 'whereBetween excessive nested array numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]], []],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereBetween('id', [[3, 4, 5]]),
+        ];
+
+        yield 'orWhereBetween nested array numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 5]]]], []],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereBetween('id', [[3, 5]]),
+        ];
+
+        yield 'orWhereBetween nested excessive array numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 4, '$lte' => 6]]]], []],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereBetween('id', [[4], [6, 8]]),
+        ];
+        */
+
+        yield 'orWhereBetween collection' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]], []]],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereBetween('id', collect([3, 4])),
+        ];
+
+        /** @see DatabaseQueryBuilderTest::testOrWhereNotBetween() */
+        yield 'orWhereNotBetween array of numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]], []]],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereNotBetween('id', [3, 5]),
+        ];
+
+        /*
+        yield 'orWhereNotBetween excessive array of numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]], []],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereNotBetween('id', [[3, 4, 5]]),
+        ];
+
+        yield 'orWhereNotBetween nested array of numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]], []],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereNotBetween('id', [[3, 5]]),
+        ];
+        */
+
+        yield 'orWhereNotBetween excessive nested array of numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => [4]]], ['id' => ['$gte' => [6, 8]]]]]]]]],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereNotBetween('id', [[4], [6, 8]]),
+        ];
+
+        yield 'orWhereNotBetween collection' => [
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]], []]],
+            fn (Builder $builder) => $builder
+                ->where('id', '=', 1)
+                ->orWhereNotBetween('id', collect([3, 4])),
+        ];
+
         yield 'distinct' => [
             ['distinct' => ['foo', [], []]],
             fn (Builder $builder) => $builder->distinct('foo'),
@@ -154,6 +271,32 @@ class BuilderTest extends TestCase
             'Order direction must be "asc" or "desc"',
             fn (Builder $builder) => $builder->orderBy('_id', 'dasc'),
         ];
+
+        /** @see DatabaseQueryBuilderTest::testWhereBetweens */
+        yield 'whereBetween array too short' => [
+            \InvalidArgumentException::class,
+            'Between array must have 2 elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', [1]),
+        ];
+
+        yield 'whereBetween array too long' => [
+            \InvalidArgumentException::class,
+            'Between array must have 2 elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', [1, 2, 3]),
+        ];
+
+        yield 'whereBetween collection too long' => [
+            \InvalidArgumentException::class,
+            'Between array must have 2 elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', new Collection([1, 2, 3])),
+        ];
+
+        yield 'whereBetween array is not a list' => [
+            \InvalidArgumentException::class,
+            'Between array must a list with 2 elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
+        ];
+
     }
 
     /** @dataProvider getEloquentMethodsNotSupported */
