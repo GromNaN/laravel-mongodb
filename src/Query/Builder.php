@@ -567,10 +567,10 @@ class Builder extends BaseBuilder
 
         if (is_array($values)) {
             if (! array_is_list($values)) {
-                throw new \InvalidArgumentException('Between array must a list with 2 elements: [min, max]');
+                throw new \InvalidArgumentException('Between $values must be a list with exactly two elements: [min, max]');
             }
             if (count($values) !== 2) {
-                throw new \InvalidArgumentException('Between array must have 2 elements: [min, max]');
+                throw new \InvalidArgumentException('Between $values must have exactly two elements: [min, max]');
             }
         }
 

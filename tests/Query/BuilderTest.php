@@ -275,25 +275,25 @@ class BuilderTest extends TestCase
         /** @see DatabaseQueryBuilderTest::testWhereBetweens */
         yield 'whereBetween array too short' => [
             \InvalidArgumentException::class,
-            'Between array must have 2 elements: [min, max]',
+            'Between $values must have exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', [1]),
         ];
 
         yield 'whereBetween array too long' => [
             \InvalidArgumentException::class,
-            'Between array must have 2 elements: [min, max]',
+            'Between $values must have exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', [1, 2, 3]),
         ];
 
         yield 'whereBetween collection too long' => [
             \InvalidArgumentException::class,
-            'Between array must have 2 elements: [min, max]',
+            'Between $values must have exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', new Collection([1, 2, 3])),
         ];
 
         yield 'whereBetween array is not a list' => [
             \InvalidArgumentException::class,
-            'Between array must a list with 2 elements: [min, max]',
+            'Between $values must be a list with exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
         ];
 
