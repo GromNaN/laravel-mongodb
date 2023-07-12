@@ -513,7 +513,7 @@ class Builder extends BaseBuilder
 
     /**
      * @inheritdoc
-     * @param  int|string  $direction
+     * @param int|string|array $direction
      */
     public function orderBy($column, $direction = 'asc')
     {

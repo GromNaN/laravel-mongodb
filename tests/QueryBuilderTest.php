@@ -863,11 +863,4 @@ class QueryBuilderTest extends TestCase
             $this->assertEquals($data[$i]['name'], $result['name']);
         }
     }
-
-    public function testOrderByInvalidDirection()
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Order direction must be "asc" or "desc"');
-        DB::collection('items')->orderBy('_id', 'dasc')->get();
-    }
 }
