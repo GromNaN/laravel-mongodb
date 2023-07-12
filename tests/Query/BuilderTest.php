@@ -131,17 +131,10 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', [1, 2]),
         ];
 
-        /*
-        yield 'whereBetween excessive nested array of numbers' => [
-            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []],
-            fn (Builder $builder) => $builder->whereBetween('id', [[1, 2, 3]]),
-        ];
-
         yield 'whereBetween nested array of numbers' => [
-            ['find' => [['id' => ['$gte' => 1, '$lte' => 2]], []]],
+            ['find' => [['id' => ['$gte' => [1], '$lte' => [2, 3]]], []]],
             fn (Builder $builder) => $builder->whereBetween('id', [[1], [2, 3]]),
         ];
-        */
 
         yield 'whereNotBetween array of numbers' => [
             ['find' => [['$or' => [['id' => ['$lte' => 1]], ['id' => ['$gte' => 2]]]], []]],
@@ -173,28 +166,13 @@ class BuilderTest extends TestCase
                 ->orWhereBetween('id', [3, 5]),
         ];
 
-        /*
-        yield 'whereBetween excessive nested array numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]], []],
-            fn (Builder $builder) => $builder
-                ->where('id', '=', 1)
-                ->orWhereBetween('id', [[3, 4, 5]]),
-        ];
-
-        yield 'orWhereBetween nested array numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 5]]]], []],
-            fn (Builder $builder) => $builder
-                ->where('id', '=', 1)
-                ->orWhereBetween('id', [[3, 5]]),
-        ];
-
-        yield 'orWhereBetween nested excessive array numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 4, '$lte' => 6]]]], []],
+        /** @link https://www.mongodb.com/docs/manual/reference/bson-type-comparison-order/#arrays */
+        yield 'orWhereBetween nested array of numbers' => [
+            ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => [4], '$lte' => [6, 8]]]]], []]],
             fn (Builder $builder) => $builder
                 ->where('id', '=', 1)
                 ->orWhereBetween('id', [[4], [6, 8]]),
         ];
-        */
 
         yield 'orWhereBetween collection' => [
             ['find' => [['$or' => [['id' => 1], ['id' => ['$gte' => 3, '$lte' => 4]]]], []]],
@@ -211,24 +189,15 @@ class BuilderTest extends TestCase
                 ->orWhereNotBetween('id', [3, 5]),
         ];
 
-        /*
-        yield 'orWhereNotBetween excessive array of numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 4]]]]]], []],
-            fn (Builder $builder) => $builder
-                ->where('id', '=', 1)
-                ->orWhereNotBetween('id', [[3, 4, 5]]),
-        ];
-
         yield 'orWhereNotBetween nested array of numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => 3]], ['id' => ['$gte' => 5]]]]]], []],
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => [2, 3]]], ['id' => ['$gte' => [5]]]]]]], []]],
             fn (Builder $builder) => $builder
                 ->where('id', '=', 1)
-                ->orWhereNotBetween('id', [[3, 5]]),
+                ->orWhereNotBetween('id', [[2, 3], [5]]),
         ];
-        */
 
         yield 'orWhereNotBetween excessive nested array of numbers' => [
-            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => [4]]], ['id' => ['$gte' => [6, 8]]]]]]]]],
+            ['find' => [['$or' => [['id' => 1], ['$or' => [['id' => ['$lte' => [4]]], ['id' => ['$gte' => [6, 8]]]]]]], []]],
             fn (Builder $builder) => $builder
                 ->where('id', '=', 1)
                 ->orWhereNotBetween('id', [[4], [6, 8]]),
@@ -297,6 +266,11 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
         ];
 
+        yield 'whereBetween nested' => [
+            \InvalidArgumentException::class,
+            'Between $values must have exactly two elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', [[1, 2]]),
+        ];
     }
 
     /** @dataProvider getEloquentMethodsNotSupported */
