@@ -15,6 +15,7 @@ use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\Regex;
 use MongoDB\BSON\UTCDateTime;
+use MongoDB\Driver\Cursor;
 use RuntimeException;
 
 /**
@@ -277,7 +278,7 @@ class Builder extends BaseBuilder
                     $aggregations = blank($this->aggregate['columns']) ? [] : $this->aggregate['columns'];
 
                     if (in_array('*', $aggregations) && $function == 'count') {
-                        return ['countDocuments' => [$wheres, []]];
+                        return ['count' => [$wheres, []]];
                     } elseif ($function == 'count') {
                         // Translate count into sum.
                         $group['aggregate'] = ['$sum' => 1];
