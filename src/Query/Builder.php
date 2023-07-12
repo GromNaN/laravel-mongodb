@@ -220,17 +220,11 @@ class Builder extends BaseBuilder
      *
      * Example: ['find' => [['name' => 'John Doe'], ['projection' => ['birthday' => 1]]]]
      *
-     * @param $columns
      * @return array<string, mixed[]>
      */
-    public function toMql($columns = []): array
+    public function toMql(): array
     {
-        // If no columns have been specified for the select statement, we will set them
-        // here to either the passed columns, or the standard default of retrieving
-        // all of the columns on the table using the "wildcard" column character.
-        if ($this->columns !== null) {
-            $columns = $this->columns;
-        }
+        $columns = $this->columns ?? [];
 
         // Drop all columns if * is present, MongoDB does not work this way.
         if (in_array('*', $columns)) {
@@ -396,6 +390,18 @@ class Builder extends BaseBuilder
      */
     public function getFresh($columns = [], $returnLazy = false)
     {
+        // If no columns have been specified for the select statement, we will set them
+        // here to either the passed columns, or the standard default of retrieving
+        // all of the columns on the table using the "wildcard" column character.
+        if ($this->columns === null) {
+            $this->columns = $columns;
+        }
+
+        // Drop all columns if * is present, MongoDB does not work this way.
+        if (in_array('*', $this->columns)) {
+            $this->columns = [];
+        }
+
         $command = $this->toMql($columns);
         assert(count($command) >= 1, 'At least one method call is required to execute a query');
 
