@@ -874,7 +874,7 @@ class Builder extends BaseBuilder
         $options = $this->inheritConnectionOptions($options);
 
         $wheres = $this->compileWheres();
-        $result = $this->collection->UpdateMany($wheres, $query, $options);
+        $result = $this->collection->updateMany($wheres, $query, $options);
         if (1 == (int) $result->isAcknowledged()) {
             return $result->getModifiedCount() ? $result->getModifiedCount() : $result->getUpsertedCount();
         }
