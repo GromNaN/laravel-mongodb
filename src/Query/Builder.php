@@ -1019,32 +1019,26 @@ class Builder extends BaseBuilder
                 }
             }
 
-            $not = false;
-            if ($where['boolean'] === 'and not') {
-                $where['boolean'] = 'and';
-                $not = true;
-            } elseif ($where['boolean'] === 'or not') {
-                $where['boolean'] = 'or';
-                $not = true;
-            }
-
             // The next item in a "chain" of wheres devices the boolean of the
             // first item. So if we see that there are multiple wheres, we will
             // use the operator of the next where.
-            if ($i == 0 && count($wheres) > 1 && $where['boolean'] == 'and') {
-                $where['boolean'] = $wheres[$i + 1]['boolean'];
+            if ($i == 0 && count($wheres) > 1
+                && str_starts_with($where['boolean'], 'and')
+                && str_starts_with($wheres[$i + 1]['boolean'], 'or')
+            ) {
+                $where['boolean'] = 'or'.(str_ends_with($where['boolean'], 'not') ? ' not' : '');
             }
 
             // We use different methods to compile different wheres.
             $method = "compileWhere{$where['type']}";
             $result = $this->{$method}($where);
 
-            if ($not) {
+            if (str_ends_with($where['boolean'], 'not')) {
                 $result = ['$not' => $result];
             }
 
             // Wrap the where with an $or operator.
-            if ($where['boolean'] == 'or') {
+            if (str_starts_with($where['boolean'], 'or')) {
                 $result = ['$or' => [$result]];
             }
 

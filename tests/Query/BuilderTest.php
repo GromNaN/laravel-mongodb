@@ -61,6 +61,30 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->where(['foo' => 1, 'bar' => 2]),
         ];
 
+        yield 'nested orWhere and where' => [
+            ['find' => [
+                ['$and' => [
+                    ['$or' => [
+                        ['$and' => [
+                            ['foo' => 1],
+                            ['$not' => ['bar' => 2]],
+                        ]],
+                    ]],
+                    ['baz' => 3],
+                ]],
+                [], // options
+            ]],
+            fn (Builder $builder) => $builder
+                ->where(
+                    fn (Builder $q) => $q->orWhere(
+                        fn (Builder $q) => $q
+                            ->where('foo', 1)
+                            ->whereNot('bar', 2)
+                    )
+                )
+                ->where('baz', 3),
+        ];
+
         yield 'find > date' => [
             ['find' => [['foo' => ['$gt' => new UTCDateTime($date)]], []]],
             fn (Builder $builder) => $builder->where('foo', '>', $date),
@@ -177,10 +201,10 @@ class BuilderTest extends TestCase
 
         yield 'where or whereNot' => [
             ['find' => [
-                [
-                    '$and' => [['name' => 'bar']],
-                    '$or' => [['$not' => ['email' => 'foo']]],
-                ],
+                ['$or' => [
+                    ['name' => 'bar'],
+                    ['$not' => ['email' => 'foo']],
+                ]],
                 [], // options
             ]],
             fn (Builder $builder) => $builder
