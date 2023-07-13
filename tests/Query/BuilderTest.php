@@ -162,7 +162,7 @@ class BuilderTest extends TestCase
         ];
 
         /** @see DatabaseQueryBuilderTest::testOrWhereBetween() */
-        yield 'whereBetween array numbers' => [
+        yield 'orWhereBetween array of numbers' => [
             ['find' => [
                 ['$or' => [
                     ['id' => 1],
