@@ -1019,6 +1019,15 @@ class Builder extends BaseBuilder
                 }
             }
 
+            $not = false;
+            if ($where['boolean'] === 'and not') {
+                $where['boolean'] = 'and';
+                $not = true;
+            } elseif ($where['boolean'] === 'or not') {
+                $where['boolean'] = 'or';
+                $not = true;
+            }
+
             // The next item in a "chain" of wheres devices the boolean of the
             // first item. So if we see that there are multiple wheres, we will
             // use the operator of the next where.
@@ -1029,6 +1038,10 @@ class Builder extends BaseBuilder
             // We use different methods to compile different wheres.
             $method = "compileWhere{$where['type']}";
             $result = $this->{$method}($where);
+
+            if ($not) {
+                $result = ['$not' => $result];
+            }
 
             // Wrap the where with an $or operator.
             if ($where['boolean'] == 'or') {
