@@ -326,7 +326,7 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
         ];
 
-        yield 'whereBetween nested' => [
+        yield 'whereBetween array too short (nested)' => [
             \InvalidArgumentException::class,
             'Between $values must be a list with exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', [[1, 2]]),
