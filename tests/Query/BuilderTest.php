@@ -333,10 +333,44 @@ class BuilderTest extends TestCase
                 ]),
         ];
 
+
         /** @see DatabaseQueryBuilderTest::testForPage() */
         yield 'forPage' => [
             ['find' => [[], ['limit' => 20, 'skip' => 40]]],
             fn (Builder $builder) => $builder->forPage(3, 20),
+        ];
+
+        yield 'skip limit' => [
+            ['find' => [[], ['skip' => 5, 'limit' => 10]]],
+            fn (Builder $builder) => $builder->offset(5)->limit(10),
+        ];
+
+        /** @see DatabaseQueryBuilderTest::testLimitsAndOffsets() */
+        yield 'offset limit' => [
+            ['find' => [[], ['skip' => 5, 'limit' => 10]]],
+            fn (Builder $builder) => $builder->offset(5)->limit(10),
+        ];
+
+        yield 'offset 0 limit 0' => [
+            ['find' => [[], []]],
+            fn (Builder $builder) => $builder->offset(0)->limit(0),
+        ];
+
+        yield 'offset limit negative' => [
+            ['find' => [[], []]],
+            fn (Builder $builder) => $builder->offset(-5)->limit(-10),
+        ];
+
+        yield 'offset limit null (reset)' => [
+            ['find' => [[], []]],
+            fn (Builder $builder) => $builder
+                ->offset(5)->limit(10)
+                ->offset(null)->limit(null),
+        ];
+
+        yield 'skip take (aliases)' => [
+            ['find' => [[], ['skip' => 5, 'limit' => 10]]],
+            fn (Builder $builder) => $builder->skip(5)->limit(10),
         ];
 
         /** @see DatabaseQueryBuilderTest::testOrderBys() */
@@ -542,6 +576,38 @@ class BuilderTest extends TestCase
             ['distinct' => ['foo', [], []]],
             fn (Builder $builder) => $builder->distinct('foo')
                 ->select('foo', 'bar'),
+        ];
+
+        /** @see DatabaseQueryBuilderTest::testLatest() */
+        yield 'latest' => [
+            ['find' => [[], ['sort' => ['created_at' => -1]]]],
+            fn (Builder $builder) => $builder->latest(),
+        ];
+
+        yield 'latest limit' => [
+            ['find' => [[], ['sort' => ['created_at' => -1], 'limit' => 1]]],
+            fn (Builder $builder) => $builder->latest()->limit(1),
+        ];
+
+        yield 'latest custom field' => [
+            ['find' => [[], ['sort' => ['updated_at' => -1]]]],
+            fn (Builder $builder) => $builder->latest('updated_at'),
+        ];
+
+        /** @see DatabaseQueryBuilderTest::testOldest() */
+        yield 'oldest' => [
+            ['find' => [[], ['sort' => ['created_at' => 1]]]],
+            fn (Builder $builder) => $builder->oldest(),
+        ];
+
+        yield 'oldest limit' => [
+            ['find' => [[], ['sort' => ['created_at' => 1], 'limit' => 1]]],
+            fn (Builder $builder) => $builder->oldest()->limit(1),
+        ];
+
+        yield 'oldest custom field' => [
+            ['find' => [[], ['sort' => ['updated_at' => 1]]]],
+            fn (Builder $builder) => $builder->oldest('updated_at'),
         ];
 
         yield 'groupBy' => [
