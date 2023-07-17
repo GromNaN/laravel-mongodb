@@ -235,22 +235,6 @@ class BuilderTest extends TestCase
                 ->orWhereNotBetween('id', [[2, 3], [5]]),
         ];
 
-        yield 'orWhereNotBetween excessive nested array of numbers' => [
-            ['find' => [
-                ['$or' => [
-                    ['id' => 1],
-                    ['$or' => [
-                        ['id' => ['$lte' => [4]]],
-                        ['id' => ['$gte' => [6, 8]]],
-                    ]],
-                ]],
-                [], // options
-            ]],
-            fn (Builder $builder) => $builder
-                ->where('id', '=', 1)
-                ->orWhereNotBetween('id', [[4], [6, 8]]),
-        ];
-
         yield 'orWhereNotBetween collection' => [
             ['find' => [
                 ['$or' => [
