@@ -1378,4 +1378,28 @@ class Builder extends BaseBuilder
     {
         throw new \BadMethodCallException('This method is not supported by MongoDB');
     }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function whereIntegerInRaw($column, $values, $boolean = 'and', $not = false)
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function orWhereIntegerInRaw($column, $values)
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function whereIntegerNotInRaw($column, $values, $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
+
+    /** @internal This method is not supported by MongoDB. */
+    public function orWhereIntegerNotInRaw($column, $values, $boolean = 'and')
+    {
+        throw new \BadMethodCallException('This method is not supported by MongoDB');
+    }
 }
