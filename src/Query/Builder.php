@@ -1019,9 +1019,9 @@ class Builder extends BaseBuilder
                 }
             }
 
-            // The next item in a "chain" of wheres devices the boolean of the
-            // first item. So if we see that there are multiple wheres, we will
-            // use the operator of the next where.
+            // In a sequence of "where" clauses, the logical operator of the
+            // first "where" is determined by the 2nd "where".
+            // $where['boolean'] = "and", "or", "and not" or "or not"
             if ($i == 0 && count($wheres) > 1
                 && str_starts_with($where['boolean'], 'and')
                 && str_starts_with($wheres[$i + 1]['boolean'], 'or')
