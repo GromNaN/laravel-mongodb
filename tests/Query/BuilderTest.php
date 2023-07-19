@@ -136,17 +136,6 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', [[1], [2, 3]]),
         ];
 
-        yield 'whereNotBetween array of numbers' => [
-            ['find' => [
-                ['$or' => [
-                    ['id' => ['$lte' => 1]],
-                    ['id' => ['$gte' => 2]],
-                ]],
-                [], // options
-            ]],
-            fn (Builder $builder) => $builder->whereNotBetween('id', [1, 2]),
-        ];
-
         $period = now()->toPeriod(now()->addMonth());
         yield 'whereBetween CarbonPeriod' => [
             ['find' => [
@@ -200,6 +189,17 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder
                 ->where('id', '=', 1)
                 ->orWhereBetween('id', collect([3, 4])),
+        ];
+
+        yield 'whereNotBetween array of numbers' => [
+            ['find' => [
+                ['$or' => [
+                    ['id' => ['$lte' => 1]],
+                    ['id' => ['$gte' => 2]],
+                ]],
+                [], // options
+            ]],
+            fn (Builder $builder) => $builder->whereNotBetween('id', [1, 2]),
         ];
 
         /** @see DatabaseQueryBuilderTest::testOrWhereNotBetween() */
@@ -292,6 +292,12 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', [1]),
         ];
 
+        yield 'whereBetween array too short (nested)' => [
+            \InvalidArgumentException::class,
+            'Between $values must be a list with exactly two elements: [min, max]',
+            fn (Builder $builder) => $builder->whereBetween('id', [[1, 2]]),
+        ];
+
         yield 'whereBetween array too long' => [
             \InvalidArgumentException::class,
             'Between $values must be a list with exactly two elements: [min, max]',
@@ -308,12 +314,6 @@ class BuilderTest extends TestCase
             \InvalidArgumentException::class,
             'Between $values must be a list with exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
-        ];
-
-        yield 'whereBetween array too short (nested)' => [
-            \InvalidArgumentException::class,
-            'Between $values must be a list with exactly two elements: [min, max]',
-            fn (Builder $builder) => $builder->whereBetween('id', [[1, 2]]),
         ];
     }
 
