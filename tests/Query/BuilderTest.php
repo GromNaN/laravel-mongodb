@@ -11,6 +11,7 @@ use Jenssegers\Mongodb\Connection;
 use Jenssegers\Mongodb\Query\Builder;
 use Jenssegers\Mongodb\Query\Processor;
 use Mockery as m;
+use MongoDB\BSON\Regex;
 use MongoDB\BSON\UTCDateTime;
 use PHPUnit\Framework\TestCase;
 
@@ -578,6 +579,62 @@ class BuilderTest extends TestCase
                 ->orWhereNotBetween('id', collect([3, 4])),
         ];
 
+        yield 'where like' => [
+            ['find' => [['name' => new Regex('^acme$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', 'acme'),
+        ];
+
+        yield 'where like escape' => [
+            ['find' => [['name' => new Regex('^\^ac\.me\$$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', '^ac.me$'),
+        ];
+
+        yield 'where like unescaped \% \_' => [
+            ['find' => [['name' => new Regex('^a%cm_e$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', 'a\%cm\_e'),
+        ];
+
+        yield 'where like %' => [
+            ['find' => [['name' => new Regex('^.*ac.*me.*$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', '%ac%me%'),
+        ];
+
+        yield 'where like _' => [
+            ['find' => [['name' => new Regex('^.ac.me.$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', '_ac_me_'),
+        ];
+
+        $regex = new Regex('^acme$', 'si');
+        yield 'where BSON\Regex' => [
+            ['find' => [['name' => $regex], []]],
+            fn (Builder $builder) => $builder->where('name', 'regex', $regex),
+        ];
+
+        yield 'where regex delimiter /' => [
+            ['find' => [['name' => $regex], []]],
+            fn (Builder $builder) => $builder->where('name', 'regex', '/^acme$/si'),
+        ];
+
+        yield 'where regex delimiter #' => [
+            ['find' => [['name' => $regex], []]],
+            fn (Builder $builder) => $builder->where('name', 'regex', '#^acme$#si'),
+        ];
+
+        yield 'where regex delimiter ~' => [
+            ['find' => [['name' => $regex], []]],
+            fn (Builder $builder) => $builder->where('name', 'regex', '#^acme$#si'),
+        ];
+
+        yield 'where regex escaped delimiter' => [
+            ['find' => [['name' => new Regex('ac\/me', '')], []]],
+            fn (Builder $builder) => $builder->where('name', 'regex', '/ac\/me/'),
+        ];
+
+        yield 'where not regex' => [
+            ['find' => [['name' => ['$not' => $regex]], []]],
+            fn (Builder $builder) => $builder->where('name', 'not regex', '/^acme$/si'),
+        ];
+
         /** @see DatabaseQueryBuilderTest::testBasicSelectDistinct */
         yield 'distinct' => [
             ['distinct' => ['foo', [], []]],
@@ -647,7 +704,7 @@ class BuilderTest extends TestCase
 
         $this->expectException($class);
         $this->expectExceptionMessage($message);
-        $build($builder);
+        $build($builder)->toMQL();
     }
 
     public static function provideExceptions(): iterable
@@ -689,10 +746,41 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
         ];
 
+
         yield 'find with single string argument' => [
             \ArgumentCountError::class,
             'Too few arguments to function Jenssegers\Mongodb\Query\Builder::where("foo"), 1 passed and at least 2 expected when the 1st is a string',
             fn (Builder $builder) => $builder->where('foo'),
+        ];
+
+        yield 'where regex not starting with /' => [
+            \LogicException::class,
+            'Regular expressions must be surrounded by delimiter "/". Got "^ac/me$"',
+            fn (Builder $builder) => $builder->where('name', 'regex', '^ac/me$'),
+        ];
+
+        yield 'where regex not ending with /' => [
+            \LogicException::class,
+            'Regular expressions must be surrounded by delimiter "/". Got "/^acme$"',
+            fn (Builder $builder) => $builder->where('name', 'regex', '/^acme$'),
+        ];
+
+        yield 'where regex not ending with #' => [
+            \LogicException::class,
+            'Regular expressions must be surrounded by delimiter "#". Got "#^acme$"',
+            fn (Builder $builder) => $builder->where('name', 'regex', '#^acme$'),
+        ];
+
+        yield 'where regexp not supported' => [
+            \LogicException::class,
+            'Operator "regexp" is not supported. Use "regex" instead.',
+            fn (Builder $builder) => $builder->where('name', 'regexp', '/^acme$/'),
+        ];
+
+        yield 'where ilike not supported' => [
+            \LogicException::class,
+            'Operator "ilike" is not supported. Use "like" instead.',
+            fn (Builder $builder) => $builder->where('name', 'ilike', 'acme'),
         ];
     }
 

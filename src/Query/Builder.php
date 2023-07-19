@@ -75,15 +75,12 @@ class Builder extends BaseBuilder
         'like',
         'not like',
         'between',
-        'ilike',
         '&',
         '|',
         '^',
         '<<',
         '>>',
         'rlike',
-        'regexp',
-        'not regexp',
         'exists',
         'type',
         'mod',
@@ -91,6 +88,7 @@ class Builder extends BaseBuilder
         'all',
         'size',
         'regex',
+        'not regex',
         'text',
         'slice',
         'elemmatch',
@@ -120,6 +118,13 @@ class Builder extends BaseBuilder
         '<=' => '$lte',
         '>' => '$gt',
         '>=' => '$gte',
+    ];
+
+    private $replacementOperators = [
+        'regexp' => 'regex',
+        'not regexp' => 'not regex',
+        'ilike' => 'like',
+        'not ilike' => 'not like',
     ];
 
     /**
@@ -934,7 +939,6 @@ class Builder extends BaseBuilder
 
                 // Operator conversions
                 $convert = [
-                    'regexp' => 'regex',
                     'elemmatch' => 'elemMatch',
                     'geointersects' => 'geoIntersects',
                     'geowithin' => 'geoWithin',
@@ -1034,41 +1038,39 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        // Replace like or not like with a Regex instance.
+        // Replace like with a Regex instance.
         if (in_array($operator, ['like', 'not like'])) {
-            if ($operator === 'not like') {
-                $operator = 'not';
-            } else {
-                $operator = '=';
-            }
+            // Convert % and _ to regex, and unescape \% and \_
+            $regex = preg_replace(
+                ['#(^|[^\\\])%#', '#(^|[^\\\])_#', '#\\\\\\\(%|_)#'],
+                ['$1.*', '$1.', '$1'],
+                preg_quote($value),
+            );
+            $value = new Regex('^'.$regex.'$', 'i');
 
-            // Convert to regular expression.
-            $regex = preg_replace('#(^|[^\\\])%#', '$1.*', preg_quote($value));
+            // For inverse like operations, we can just use the $not operator and pass it a Regex instance.
+            $operator = $operator === 'like' ? '=' : 'not';
+        }
 
-            // Convert like to regular expression.
-            if (! Str::startsWith($value, '%')) {
-                $regex = '^'.$regex;
-            }
-            if (! Str::endsWith($value, '%')) {
-                $regex .= '$';
-            }
-
-            $value = new Regex($regex, 'i');
-        } // Manipulate regexp operations.
-        elseif (in_array($operator, ['regexp', 'not regexp', 'regex', 'not regex'])) {
+        // Manipulate regex operations.
+        if (in_array($operator, ['regex', 'not regex'])) {
             // Automatically convert regular expression strings to Regex objects.
-            if (! $value instanceof Regex) {
-                $e = explode('/', $value);
-                $flag = end($e);
-                $regstr = substr($value, 1, -(strlen($flag) + 1));
-                $value = new Regex($regstr, $flag);
+            if (is_string($value)) {
+                $delimiter = substr($value, 0, 1);
+                if (! in_array($delimiter, ['/', '#', '~'])) {
+                    throw new \LogicException(sprintf('Regular expressions must be surrounded by delimiter "/". Got "%s"', $value));
+                }
+                $e = explode($delimiter, $value);
+                if (count($e) < 3) {
+                    throw new \LogicException(sprintf('Regular expressions must be surrounded by delimiter "%s". Got "%s"', $delimiter, $value));
+                }
+                $flags = end($e);
+                $regstr = substr($value, 1, -1 - strlen($flags));
+                $value = new Regex($regstr, $flags);
             }
 
-            // For inverse regexp operations, we can just use the $not operator
-            // and pass it a Regex instence.
-            if (Str::startsWith($operator, 'not')) {
-                $operator = 'not';
-            }
+            // For inverse regex operations, we can just use the $not operator and pass it a Regex instance.
+            $operator = $operator === 'regex' ? '=' : 'not';
         }
 
         if (! isset($operator) || $operator == '=') {
@@ -1249,6 +1251,15 @@ class Builder extends BaseBuilder
     protected function compileWhereRaw(array $where): mixed
     {
         return $where['sql'];
+    }
+
+    protected function invalidOperator($operator)
+    {
+        if (is_string($operator) && isset($this->replacementOperators[$operator = strtolower($operator)])) {
+            throw new \InvalidArgumentException(sprintf('Operator "%s" is not supported. Use "%s" instead.', $operator, $this->replacementOperators[$operator]));
+        }
+
+        return parent::invalidOperator($operator);
     }
 
     /**
