@@ -45,20 +45,14 @@ class BuilderTest extends TestCase
          */
         $date = new DateTimeImmutable('2016-07-12 15:30:00');
 
-        /** @see DatabaseQueryBuilderTest::testBasicSelectWithGetColumns */
-        yield 'find all' => [
-            ['find' => [[], []]],
-            fn (Builder $builder) => $builder->select('*'),
+        yield 'select replaces previous select' => [
+            ['find' => [[], ['projection' => ['bar' => 1]]]],
+            fn (Builder $builder) => $builder->select('foo')->select('bar'),
         ];
 
-        yield 'find default null' => [
-            ['find' => [['foo' => null], []]],
-            fn (Builder $builder) => $builder->where('foo'),
-        ];
-
-        yield 'find all with select' => [
+        yield 'select array' => [
             ['find' => [[], ['projection' => ['foo' => 1, 'bar' => 1]]]],
-            fn (Builder $builder) => $builder->select('foo', 'bar'),
+            fn (Builder $builder) => $builder->select(['foo', 'bar']),
         ];
 
         /** @see DatabaseQueryBuilderTest::testAddingSelects */
@@ -68,6 +62,16 @@ class BuilderTest extends TestCase
                 ->addSelect('bar')
                 ->addSelect(['baz', 'boom'])
                 ->addSelect('bar'),
+        ];
+
+        yield 'select all' => [
+            ['find' => [[], []]],
+            fn (Builder $builder) => $builder->select('*'),
+        ];
+
+        yield 'find all with select' => [
+            ['find' => [[], ['projection' => ['foo' => 1, 'bar' => 1]]]],
+            fn (Builder $builder) => $builder->select('foo', 'bar'),
         ];
 
         yield 'find equals' => [
@@ -97,11 +101,7 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->whereIn('foo', ['bar', 'baz']),
         ];
 
-        yield 'whereIn associative array' => [
-            ['find' => [['id' => ['$in' => [45582, 2, 3]]], []]],
-            fn (Builder $builder) => $builder->whereIn('id', ['issue' => 45582, 'id' => 2, 3]),
-        ];
-
+        // Nested array are not flattened like in the Eloquent builder. MongoDB can compare objects.
         $array = [['issue' => 45582], ['id' => 2], [3]];
         yield 'whereIn nested array' => [
             ['find' => [['id' => ['$in' => $array]], []]],
@@ -333,16 +333,10 @@ class BuilderTest extends TestCase
                 ]),
         ];
 
-
         /** @see DatabaseQueryBuilderTest::testForPage() */
         yield 'forPage' => [
             ['find' => [[], ['limit' => 20, 'skip' => 40]]],
             fn (Builder $builder) => $builder->forPage(3, 20),
-        ];
-
-        yield 'skip limit' => [
-            ['find' => [[], ['skip' => 5, 'limit' => 10]]],
-            fn (Builder $builder) => $builder->offset(5)->limit(10),
         ];
 
         /** @see DatabaseQueryBuilderTest::testLimitsAndOffsets() */
@@ -668,6 +662,12 @@ class BuilderTest extends TestCase
             \InvalidArgumentException::class,
             'Between $values must be a list with exactly two elements: [min, max]',
             fn (Builder $builder) => $builder->whereBetween('id', ['min' => 1, 'max' => 2]),
+        ];
+
+        yield 'find with single string argument' => [
+            \ArgumentCountError::class,
+            'Too few arguments to function Jenssegers\Mongodb\Query\Builder::where("foo"), 1 passed and at least 2 expected when the 1st is a string',
+            fn (Builder $builder) => $builder->where('foo'),
         ];
     }
 
