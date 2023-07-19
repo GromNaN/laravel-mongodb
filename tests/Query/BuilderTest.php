@@ -152,7 +152,7 @@ class BuilderTest extends TestCase
                 ->whereNot(fn (Builder $q) => $q->where('name', 'foo')),
         ];
 
-        yield 'where and whereNot' => [
+        yield 'where whereNot' => [
             ['find' => [
                 ['$and' => [
                     ['name' => 'bar'],
@@ -167,7 +167,7 @@ class BuilderTest extends TestCase
                 }),
         ];
 
-        yield 'nested whereNot' => [
+        yield 'whereNot (nested)' => [
             ['find' => [
                 ['$not' => [
                     '$and' => [
@@ -199,7 +199,7 @@ class BuilderTest extends TestCase
                 }),
         ];
 
-        yield 'where or whereNot' => [
+        yield 'where orWhereNot' => [
             ['find' => [
                 ['$or' => [
                     ['name' => 'bar'],
