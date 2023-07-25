@@ -5,6 +5,7 @@ namespace Jenssegers\Mongodb\Tests\Casts;
 use Generator;
 use function hex2bin;
 use Jenssegers\Mongodb\Tests\Models\CastBinaryUuid;
+use Jenssegers\Mongodb\Tests\Models\IdCastBinaryUuid;
 use Jenssegers\Mongodb\Tests\TestCase;
 use MongoDB\BSON\Binary;
 
@@ -15,6 +16,7 @@ class BinaryUuidTest extends TestCase
         parent::setUp();
 
         CastBinaryUuid::truncate();
+        IdCastBinaryUuid::truncate();
     }
 
     /** @dataProvider provideBinaryUuidCast */
@@ -25,6 +27,17 @@ class BinaryUuidTest extends TestCase
         $model = CastBinaryUuid::firstWhere('uuid', $queryUuid);
         $this->assertNotNull($model);
         $this->assertSame($expectedUuid, $model->uuid);
+    }
+
+    /** @dataProvider provideBinaryUuidCast */
+    public function testBinaryUuidCastId(string $expectedUuid, string|Binary $saveUuid, Binary $queryUuid): void
+    {
+        IdCastBinaryUuid::create(['_id' => $saveUuid]);
+
+        $model = IdCastBinaryUuid::firstWhere('_id', $queryUuid);
+        $this->assertNotNull($model);
+        $this->assertSame($expectedUuid, $model->_id);
+        $this->assertSame($expectedUuid, $model->id);
     }
 
     public static function provideBinaryUuidCast(): Generator

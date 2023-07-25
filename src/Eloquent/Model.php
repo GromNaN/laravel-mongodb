@@ -66,6 +66,13 @@ abstract class Model extends BaseModel
             $value = $this->attributes['_id'];
         }
 
+        // If a cast is defined for "id" or "_id", convert the value using it.
+        foreach (['id', '_id'] as $key) {
+            if ($this->hasCast($key)) {
+                return $this->castAttribute($key, $value);
+            }
+        }
+
         // Convert ObjectID to string.
         if ($value instanceof ObjectID) {
             return (string) $value;
