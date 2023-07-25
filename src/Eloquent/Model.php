@@ -20,6 +20,10 @@ use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
 use function uniqid;
 
+/**
+ * @mixin Builder
+ * @mixin QueryBuilder
+ */
 abstract class Model extends BaseModel
 {
     use HybridRelations, EmbedsRelations;
