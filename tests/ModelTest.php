@@ -16,10 +16,14 @@ use Jenssegers\Mongodb\Connection;
 use Jenssegers\Mongodb\Eloquent\Model;
 use Jenssegers\Mongodb\Tests\Models\Book;
 use Jenssegers\Mongodb\Tests\Models\Guarded;
+use Jenssegers\Mongodb\Tests\Models\IdIsBinaryUuid;
+use Jenssegers\Mongodb\Tests\Models\IdIsInt;
+use Jenssegers\Mongodb\Tests\Models\IdIsString;
 use Jenssegers\Mongodb\Tests\Models\Item;
 use Jenssegers\Mongodb\Tests\Models\MemberStatus;
 use Jenssegers\Mongodb\Tests\Models\Soft;
 use Jenssegers\Mongodb\Tests\Models\User;
+use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
 
@@ -325,11 +329,106 @@ class ModelTest extends TestCase
         $this->assertEquals(2, Soft::count());
     }
 
-    public function testPrimaryKey(): void
+    /**
+     * @dataProvider provideId
+     */
+    public function testPrimaryKey(string $model, $id, string $type): void
     {
-        $user = new User;
+        $model::truncate();
+
+        $document = new $model;
+        $this->assertEquals('_id', $document->getKeyName());
+
+        $document->_id = $id;
+        $document->save();
+        $this->assertSame($type, get_debug_type($document->_id));
+        $this->assertEquals($id, $document->_id);
+        $this->assertSame($type, get_debug_type($document->getKey()));
+        $this->assertEquals($id, $document->getKey());
+
+        $check = $model::find($id);
+
+        $this->assertNotNull($check, 'Not found');
+        $this->assertSame($type, get_debug_type($check->_id));
+        $this->assertEquals($id, $check->_id);
+        $this->assertSame($type, get_debug_type($check->getKey()));
+        $this->assertEquals($id, $check->getKey());
+    }
+
+    public static function provideId(): iterable
+    {
+        yield 'int' => [
+            User::class,
+            10,
+            'int',
+        ];
+
+        yield 'cast as int' => [
+            IdIsInt::class,
+            10,
+            'int',
+        ];
+
+        yield 'string' => [
+            User::class,
+            'user-10',
+            'string',
+        ];
+
+        yield 'cast as string' => [
+            IdIsString::class,
+            'user-10',
+            'string',
+        ];
+
+        yield 'ObjectID' => [
+            User::class,
+            new ObjectID(),
+            'string',
+        ];
+
+        yield 'BinaryUuid' => [
+            User::class,
+            new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID),
+            'string',
+        ];
+
+        yield 'cast as BinaryUuid' => [
+            IdIsBinaryUuid::class,
+            new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID),
+            'string',
+        ];
+
+        yield 'UTCDateTime' => [
+            User::class,
+            new UTCDateTime(),
+            UTCDateTime::class,
+        ];
+    }
+
+    public function testPrimaryKeyBinaryUuid(): void
+    {
+        $user = new IdIsBinaryUuid;
         $this->assertEquals('_id', $user->getKeyName());
 
+        $uuid = new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID);
+        $idAsString = (string) $uuid;
+        $user->_id = $uuid;
+        $user->name = 'John Doe';
+        $user->save();
+        $this->assertIsString($user->getKey());
+        $this->assertSame($idAsString, $user->getKey());
+
+        $check = IdIsBinaryUuid::find($uuid);
+        $this->assertIsString($check->_id);
+        $this->assertSame($idAsString, $check->_id);
+        $this->assertIsString($check->getKey());
+        $this->assertSame($idAsString, $check->getKey());
+        $this->assertSame('John Doe', $check->name);
+    }
+
+    public function testCustomPrimaryKey(): void
+    {
         $book = new Book;
         $this->assertEquals('title', $book->getKeyName());
 
