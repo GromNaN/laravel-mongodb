@@ -345,14 +345,23 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->offset(5)->limit(10),
         ];
 
-        yield 'offset 0 limit 0' => [
+        yield 'offset limit zero (unset)' => [
             ['find' => [[], []]],
-            fn (Builder $builder) => $builder->offset(0)->limit(0),
+            fn (Builder $builder) => $builder
+                ->offset(0)->limit(0),
         ];
 
-        yield 'offset limit negative' => [
+        yield 'offset limit zero (reset)' => [
             ['find' => [[], []]],
-            fn (Builder $builder) => $builder->offset(-5)->limit(-10),
+            fn (Builder $builder) => $builder
+                ->offset(5)->limit(10)
+                ->offset(0)->limit(0),
+        ];
+
+        yield 'offset limit negative (unset)' => [
+            ['find' => [[], []]],
+            fn (Builder $builder) => $builder
+                ->offset(-5)->limit(-10),
         ];
 
         yield 'offset limit null (reset)' => [
