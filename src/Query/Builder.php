@@ -24,6 +24,8 @@ use RuntimeException;
  */
 class Builder extends BaseBuilder
 {
+    private const REGEX_DELIMITERS = ['/', '#', '~'];
+
     /**
      * The database collection.
      *
@@ -112,19 +114,23 @@ class Builder extends BaseBuilder
      */
     protected $conversion = [
         '=' => '=',
-        '!=' => '$ne',
-        '<>' => '$ne',
-        '<' => '$lt',
-        '<=' => '$lte',
-        '>' => '$gt',
-        '>=' => '$gte',
-    ];
-
-    private $replacementOperators = [
+        '!=' => 'ne',
+        '<>' => 'ne',
+        '<' => 'lt',
+        '<=' => 'lte',
+        '>' => 'gt',
+        '>=' => 'gte',
         'regexp' => 'regex',
         'not regexp' => 'not regex',
         'ilike' => 'like',
         'not ilike' => 'not like',
+        'elemmatch' => 'elemMatch',
+        'geointersects' => 'geoIntersects',
+        'geowithin' => 'geoWithin',
+        'nearsphere' => 'nearSphere',
+        'maxdistance' => 'maxDistance',
+        'centersphere' => 'centerSphere',
+        'uniquedocs' => 'uniqueDocs',
     ];
 
     /**
@@ -937,19 +943,9 @@ class Builder extends BaseBuilder
             if (isset($where['operator'])) {
                 $where['operator'] = strtolower($where['operator']);
 
-                // Operator conversions
-                $convert = [
-                    'elemmatch' => 'elemMatch',
-                    'geointersects' => 'geoIntersects',
-                    'geowithin' => 'geoWithin',
-                    'nearsphere' => 'nearSphere',
-                    'maxdistance' => 'maxDistance',
-                    'centersphere' => 'centerSphere',
-                    'uniquedocs' => 'uniqueDocs',
-                ];
-
-                if (array_key_exists($where['operator'], $convert)) {
-                    $where['operator'] = $convert[$where['operator']];
+                // Convert aliased operators
+                if (array_key_exists($where['operator'], $this->conversion)) {
+                    $where['operator'] = $this->conversion[$where['operator']];
                 }
             }
 
@@ -1057,12 +1053,12 @@ class Builder extends BaseBuilder
             // Automatically convert regular expression strings to Regex objects.
             if (is_string($value)) {
                 $delimiter = substr($value, 0, 1);
-                if (! in_array($delimiter, ['/', '#', '~'])) {
-                    throw new \LogicException(sprintf('Regular expressions must be surrounded by delimiter "/". Got "%s"', $value));
+                if (! in_array($delimiter, self::REGEX_DELIMITERS)) {
+                    throw new \LogicException(sprintf('Missing expected starting delimiter in regular expression "%s", supported delimiters are: %s', $value, implode(' ', self::REGEX_DELIMITERS)));
                 }
                 $e = explode($delimiter, $value);
                 if (count($e) < 3) {
-                    throw new \LogicException(sprintf('Regular expressions must be surrounded by delimiter "%s". Got "%s"', $delimiter, $value));
+                    throw new \LogicException(sprintf('Missing expected ending delimiter "%s" in regular expression "%s"', $delimiter, $value));
                 }
                 $flags = end($e);
                 $regstr = substr($value, 1, -1 - strlen($flags));
@@ -1075,8 +1071,6 @@ class Builder extends BaseBuilder
 
         if (! isset($operator) || $operator == '=') {
             $query = [$column => $value];
-        } elseif (array_key_exists($operator, $this->conversion)) {
-            $query = [$column => [$this->conversion[$operator] => $value]];
         } else {
             $query = [$column => ['$'.$operator => $value]];
         }
@@ -1135,7 +1129,7 @@ class Builder extends BaseBuilder
      */
     protected function compileWhereNotNull(array $where): array
     {
-        $where['operator'] = '!=';
+        $where['operator'] = 'ne';
         $where['value'] = null;
 
         return $this->compileWhereBasic($where);
@@ -1255,8 +1249,14 @@ class Builder extends BaseBuilder
 
     protected function invalidOperator($operator)
     {
-        if (is_string($operator) && isset($this->replacementOperators[$operator = strtolower($operator)])) {
-            throw new \InvalidArgumentException(sprintf('Operator "%s" is not supported. Use "%s" instead.', $operator, $this->replacementOperators[$operator]));
+        if (! is_string($operator)) {
+            return true;
+        }
+
+        $operator = strtolower($operator);
+
+        if (isset($this->conversion[$operator])) {
+            return false;
         }
 
         return parent::invalidOperator($operator);
