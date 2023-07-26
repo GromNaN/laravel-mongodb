@@ -601,12 +601,12 @@ class BuilderTest extends TestCase
 
         yield 'where like %' => [
             ['find' => [['name' => new Regex('^.*ac.*me.*$', 'i')], []]],
-            fn (Builder $builder) => $builder->where('name', 'like', '%ac%me%'),
+            fn (Builder $builder) => $builder->where('name', 'like', '%ac%%me%'),
         ];
 
         yield 'where like _' => [
-            ['find' => [['name' => new Regex('^.ac.me.$', 'i')], []]],
-            fn (Builder $builder) => $builder->where('name', 'like', '_ac_me_'),
+            ['find' => [['name' => new Regex('^.ac..me.$', 'i')], []]],
+            fn (Builder $builder) => $builder->where('name', 'like', '_ac__me_'),
         ];
 
         $regex = new Regex('^acme$', 'si');

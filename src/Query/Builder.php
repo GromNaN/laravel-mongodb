@@ -944,7 +944,7 @@ class Builder extends BaseBuilder
                 $where['operator'] = strtolower($where['operator']);
 
                 // Convert aliased operators
-                if (array_key_exists($where['operator'], $this->conversion)) {
+                if (isset($this->conversion[$where['operator']])) {
                     $where['operator'] = $this->conversion[$where['operator']];
                 }
             }
@@ -1036,20 +1036,30 @@ class Builder extends BaseBuilder
 
         // Replace like with a Regex instance.
         if (in_array($operator, ['like', 'not like'])) {
-            // Convert % and _ to regex, and unescape \% and \_
             $regex = preg_replace(
-                ['#(^|[^\\\])%#', '#(^|[^\\\])_#', '#\\\\\\\(%|_)#'],
+                [
+                    // Unescaped % are converted to .*
+                    // Group consecutive %
+                    '#(^|[^\\\])%+#',
+                    // Unescaped _ are converted to .
+                    // Use positive lookahead to replace consecutive _
+                    '#(?<=^|[^\\\\])_#',
+                    // Escaped \% or \_ are unescaped
+                    '#\\\\\\\(%|_)#',
+                ],
                 ['$1.*', '$1.', '$1'],
+                // Escape any regex reserved characters, so they are matched
+                // All backslashes are converted to \\, which are needed in matching regexes.
                 preg_quote($value),
             );
             $value = new Regex('^'.$regex.'$', 'i');
 
-            // For inverse like operations, we can just use the $not operator and pass it a Regex instance.
+            // For inverse like operations, we can just use the $not operator with the Regex
             $operator = $operator === 'like' ? '=' : 'not';
         }
 
         // Manipulate regex operations.
-        if (in_array($operator, ['regex', 'not regex'])) {
+        elseif (in_array($operator, ['regex', 'not regex'])) {
             // Automatically convert regular expression strings to Regex objects.
             if (is_string($value)) {
                 // Detect the delimiter and validate the preg pattern
@@ -1070,7 +1080,7 @@ class Builder extends BaseBuilder
                 $value = new Regex($regstr, $flags);
             }
 
-            // For inverse regex operations, we can just use the $not operator and pass it a Regex instance.
+            // For inverse regex operations, we can just use the $not operatorwith the Regex
             $operator = $operator === 'regex' ? '=' : 'not';
         }
 
