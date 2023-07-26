@@ -635,8 +635,8 @@ class BuilderTest extends TestCase
             fn (Builder $builder) => $builder->where('name', 'regex', '#^acme$#si'),
         ];
 
-        yield 'where regex escaped delimiter' => [
-            ['find' => [['name' => new Regex('ac\/me', '')], []]],
+        yield 'where regex with escaped forward slash' => [
+            ['find' => [['name' => new Regex('ac/me', '')], []]],
             fn (Builder $builder) => $builder->where('name', 'regex', '/ac\/me/'),
         ];
 

@@ -1052,6 +1052,7 @@ class Builder extends BaseBuilder
         if (in_array($operator, ['regex', 'not regex'])) {
             // Automatically convert regular expression strings to Regex objects.
             if (is_string($value)) {
+                // Detect the delimiter and validate the preg pattern
                 $delimiter = substr($value, 0, 1);
                 if (! in_array($delimiter, self::REGEX_DELIMITERS)) {
                     throw new \LogicException(sprintf('Missing expected starting delimiter in regular expression "%s", supported delimiters are: %s', $value, implode(' ', self::REGEX_DELIMITERS)));
@@ -1060,8 +1061,12 @@ class Builder extends BaseBuilder
                 if (count($e) < 3) {
                     throw new \LogicException(sprintf('Missing expected ending delimiter "%s" in regular expression "%s"', $delimiter, $value));
                 }
+                // Flags are after the last delimiter
                 $flags = end($e);
+                // Extract the regex string between the delimiters
                 $regstr = substr($value, 1, -1 - strlen($flags));
+                // Unescape forward slashes
+                $regstr = stripslashes($regstr);
                 $value = new Regex($regstr, $flags);
             }
 
