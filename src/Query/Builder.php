@@ -1075,8 +1075,6 @@ class Builder extends BaseBuilder
                 $flags = end($e);
                 // Extract the regex string between the delimiters
                 $regstr = substr($value, 1, -1 - strlen($flags));
-                // Unescape forward slashes
-                $regstr = stripslashes($regstr);
                 $value = new Regex($regstr, $flags);
             }
 
