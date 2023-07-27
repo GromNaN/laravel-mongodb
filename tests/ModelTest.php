@@ -332,26 +332,27 @@ class ModelTest extends TestCase
     /**
      * @dataProvider provideId
      */
-    public function testPrimaryKey(string $model, $id, string $type): void
+    public function testPrimaryKey(string $model, $id, $expected): void
     {
         $model::truncate();
+        $expectedType = get_debug_type($expected);
 
         $document = new $model;
         $this->assertEquals('_id', $document->getKeyName());
 
         $document->_id = $id;
         $document->save();
-        $this->assertSame($type, get_debug_type($document->_id));
-        $this->assertEquals($id, $document->_id);
-        $this->assertSame($type, get_debug_type($document->getKey()));
-        $this->assertEquals($id, $document->getKey());
+        $this->assertSame($expectedType, get_debug_type($document->_id));
+        $this->assertEquals($expected, $document->_id);
+        $this->assertSame($expectedType, get_debug_type($document->getKey()));
+        $this->assertEquals($expected, $document->getKey());
 
         $check = $model::find($id);
 
         $this->assertNotNull($check, 'Not found');
-        $this->assertSame($type, get_debug_type($check->_id));
+        $this->assertSame($expectedType, get_debug_type($check->_id));
         $this->assertEquals($id, $check->_id);
-        $this->assertSame($type, get_debug_type($check->getKey()));
+        $this->assertSame($expectedType, get_debug_type($check->getKey()));
         $this->assertEquals($id, $check->getKey());
     }
 
@@ -360,71 +361,53 @@ class ModelTest extends TestCase
         yield 'int' => [
             User::class,
             10,
-            'int',
+            10,
         ];
 
         yield 'cast as int' => [
             IdIsInt::class,
             10,
-            'int',
+            10,
         ];
 
         yield 'string' => [
             User::class,
             'user-10',
-            'string',
+            'user-10',
         ];
 
         yield 'cast as string' => [
             IdIsString::class,
             'user-10',
-            'string',
+            'user-10',
         ];
 
+        $objectId = new ObjectID();
         yield 'ObjectID' => [
             User::class,
-            new ObjectID(),
-            'string',
+            $objectId,
+            (string) $objectId,
         ];
 
+        $binaryUuid = new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID);
         yield 'BinaryUuid' => [
             User::class,
-            new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID),
-            'string',
+            $binaryUuid,
+            (string) $binaryUuid,
         ];
 
         yield 'cast as BinaryUuid' => [
             IdIsBinaryUuid::class,
-            new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID),
-            'string',
+            $binaryUuid,
+            (string) $binaryUuid,
         ];
 
+        $date = new UTCDateTime();
         yield 'UTCDateTime' => [
             User::class,
-            new UTCDateTime(),
-            UTCDateTime::class,
+            $date,
+            $date,
         ];
-    }
-
-    public function testPrimaryKeyBinaryUuid(): void
-    {
-        $user = new IdIsBinaryUuid;
-        $this->assertEquals('_id', $user->getKeyName());
-
-        $uuid = new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID);
-        $idAsString = (string) $uuid;
-        $user->_id = $uuid;
-        $user->name = 'John Doe';
-        $user->save();
-        $this->assertIsString($user->getKey());
-        $this->assertSame($idAsString, $user->getKey());
-
-        $check = IdIsBinaryUuid::find($uuid);
-        $this->assertIsString($check->_id);
-        $this->assertSame($idAsString, $check->_id);
-        $this->assertIsString($check->getKey());
-        $this->assertSame($idAsString, $check->getKey());
-        $this->assertSame('John Doe', $check->name);
     }
 
     public function testCustomPrimaryKey(): void
