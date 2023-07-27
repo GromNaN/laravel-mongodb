@@ -408,6 +408,20 @@ class ModelTest extends TestCase
             $date,
             $date,
         ];
+
+        $array = ['foo' => 'bar'];
+        yield 'array' => [
+            User::class,
+            $array,
+            $array,
+        ];
+
+        $object = (object) ['foo' => 'bar'];
+        yield 'object' => [
+            User::class,
+            $object,
+            $object,
+        ];
     }
 
     public function testCustomPrimaryKey(): void
