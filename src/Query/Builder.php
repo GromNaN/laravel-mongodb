@@ -77,12 +77,15 @@ class Builder extends BaseBuilder
         'like',
         'not like',
         'between',
+        'ilike',
         '&',
         '|',
         '^',
         '<<',
         '>>',
         'rlike',
+        'regexp',
+        'not regexp',
         'exists',
         'type',
         'mod',
@@ -113,7 +116,6 @@ class Builder extends BaseBuilder
      * @var array
      */
     protected $conversion = [
-        '=' => '=',
         '!=' => 'ne',
         '<>' => 'ne',
         '<' => 'lt',
@@ -123,7 +125,6 @@ class Builder extends BaseBuilder
         'regexp' => 'regex',
         'not regexp' => 'not regex',
         'ilike' => 'like',
-        'not ilike' => 'not like',
         'elemmatch' => 'elemMatch',
         'geointersects' => 'geoIntersects',
         'geowithin' => 'geoWithin',
@@ -1034,7 +1035,7 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        // Replace like with a Regex instance.
+        // Replace like or not like with a Regex instance.
         if (in_array($operator, ['like', 'not like'])) {
             $regex = preg_replace(
                 [
@@ -1068,6 +1069,7 @@ class Builder extends BaseBuilder
                     throw new \LogicException(sprintf('Missing expected starting delimiter in regular expression "%s", supported delimiters are: %s', $value, implode(' ', self::REGEX_DELIMITERS)));
                 }
                 $e = explode($delimiter, $value);
+                // We don't try to detect if the last delimiter is escaped. This would be an invalid regex.
                 if (count($e) < 3) {
                     throw new \LogicException(sprintf('Missing expected ending delimiter "%s" in regular expression "%s"', $delimiter, $value));
                 }
@@ -1078,7 +1080,7 @@ class Builder extends BaseBuilder
                 $value = new Regex($regstr, $flags);
             }
 
-            // For inverse regex operations, we can just use the $not operatorwith the Regex
+            // For inverse regex operations, we can just use the $not operator with the Regex
             $operator = $operator === 'regex' ? '=' : 'not';
         }
 
@@ -1258,21 +1260,6 @@ class Builder extends BaseBuilder
     protected function compileWhereRaw(array $where): mixed
     {
         return $where['sql'];
-    }
-
-    protected function invalidOperator($operator)
-    {
-        if (! is_string($operator)) {
-            return true;
-        }
-
-        $operator = strtolower($operator);
-
-        if (isset($this->conversion[$operator])) {
-            return false;
-        }
-
-        return parent::invalidOperator($operator);
     }
 
     /**
