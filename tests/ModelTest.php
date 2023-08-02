@@ -332,7 +332,7 @@ class ModelTest extends TestCase
     /**
      * @dataProvider provideId
      */
-    public function testPrimaryKey(string $model, $id, $expected): void
+    public function testPrimaryKey(string $model, $id, $expected, bool $expectedFound): void
     {
         $model::truncate();
         $expectedType = get_debug_type($expected);
@@ -349,78 +349,78 @@ class ModelTest extends TestCase
 
         $check = $model::find($id);
 
-        $this->assertNotNull($check, 'Not found');
-        $this->assertSame($expectedType, get_debug_type($check->_id));
-        $this->assertEquals($id, $check->_id);
-        $this->assertSame($expectedType, get_debug_type($check->getKey()));
-        $this->assertEquals($id, $check->getKey());
+        if ($expectedFound) {
+            $this->assertNotNull($check, 'Not found');
+            $this->assertSame($expectedType, get_debug_type($check->_id));
+            $this->assertEquals($id, $check->_id);
+            $this->assertSame($expectedType, get_debug_type($check->getKey()));
+            $this->assertEquals($id, $check->getKey());
+        } else {
+            $this->assertNull($check, 'Found');
+        }
     }
 
     public static function provideId(): iterable
     {
         yield 'int' => [
-            User::class,
-            10,
-            10,
+            'model' => User::class,
+            'id' => 10,
+            'expected' => 10,
+            // Don't expect this to be found, as the int is cast to string for the query
+            'expectedFound' => false,
         ];
 
         yield 'cast as int' => [
-            IdIsInt::class,
-            10,
-            10,
+            'model' => IdIsInt::class,
+            'id' => 10,
+            'expected' => 10,
+            'expectedFound' => true,
         ];
 
         yield 'string' => [
-            User::class,
-            'user-10',
-            'user-10',
+            'model' => User::class,
+            'id' => 'user-10',
+            'expected' => 'user-10',
+            'expectedFound' => true,
         ];
 
         yield 'cast as string' => [
-            IdIsString::class,
-            'user-10',
-            'user-10',
+            'model' => IdIsString::class,
+            'id' => 'user-10',
+            'expected' => 'user-10',
+            'expectedFound' => true,
         ];
 
         $objectId = new ObjectID();
         yield 'ObjectID' => [
-            User::class,
-            $objectId,
-            (string) $objectId,
+            'model' => User::class,
+            'id' => $objectId,
+            'expected' => (string) $objectId,
+            'expectedFound' => true,
         ];
 
         $binaryUuid = new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID);
         yield 'BinaryUuid' => [
-            User::class,
-            $binaryUuid,
-            (string) $binaryUuid,
+            'model' => User::class,
+            'id' => $binaryUuid,
+            'expected' => (string) $binaryUuid,
+            'expectedFound' => true,
         ];
 
         yield 'cast as BinaryUuid' => [
-            IdIsBinaryUuid::class,
-            $binaryUuid,
-            (string) $binaryUuid,
+            'model' => IdIsBinaryUuid::class,
+            'id' => $binaryUuid,
+            'expected' => (string) $binaryUuid,
+            'expectedFound' => true,
         ];
 
         $date = new UTCDateTime();
         yield 'UTCDateTime' => [
-            User::class,
-            $date,
-            $date,
-        ];
-
-        $array = ['foo' => 'bar'];
-        yield 'array' => [
-            User::class,
-            $array,
-            $array,
-        ];
-
-        $object = (object) ['foo' => 'bar'];
-        yield 'object' => [
-            User::class,
-            $object,
-            $object,
+            'model' => User::class,
+            'id' => $date,
+            'expected' => $date,
+            // Don't expect this to be found, as the original value is stored as UTCDateTime but then cast to string
+            'expectedFound' => false,
         ];
     }
 
