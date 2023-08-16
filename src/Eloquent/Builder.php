@@ -241,4 +241,9 @@ class Builder extends EloquentBuilder
             ];
         })->values();
     }
+
+    public function whereKey($id)
+    {
+        return parent::whereKey($this->model->convertKey($id));
+    }
 }

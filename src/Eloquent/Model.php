@@ -15,8 +15,6 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use function in_array;
 use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
-use MongoDB\BSON\Binary;
-use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
 use function uniqid;
 
@@ -51,30 +49,6 @@ abstract class Model extends BaseModel
      * @var Relation
      */
     protected $parentRelation;
-
-    /**
-     * Custom accessor for the model's id.
-     *
-     * @param  mixed  $value
-     * @return mixed
-     */
-    public function getIdAttribute($value = null)
-    {
-        // If we don't have a value for 'id', we will use the MongoDB '_id' value.
-        // This allows us to work with models in a more sql-like way.
-        if (! $value && array_key_exists('_id', $this->attributes)) {
-            $value = $this->attributes['_id'];
-        }
-
-        // Convert ObjectID to string.
-        if ($value instanceof ObjectID) {
-            return (string) $value;
-        } elseif ($value instanceof Binary) {
-            return (string) $value->getData();
-        }
-
-        return $value;
-    }
 
     /**
      * @inheritdoc
@@ -190,12 +164,7 @@ abstract class Model extends BaseModel
     public function setAttribute($key, $value)
     {
         // Convert _id to ObjectID.
-        if ($key == '_id' && is_string($value)) {
-            $builder = $this->newBaseQueryBuilder();
-
-            $value = $builder->convertKey($value);
-        } // Support keys in dot notation.
-        elseif (Str::contains($key, '.')) {
+        if (Str::contains($key, '.')) {
             // Store to a temporary key, then move data to the actual key
             $uniqueKey = uniqid($key);
             parent::setAttribute($uniqueKey, $value);
@@ -207,28 +176,6 @@ abstract class Model extends BaseModel
         }
 
         return parent::setAttribute($key, $value);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function attributesToArray()
-    {
-        $attributes = parent::attributesToArray();
-
-        // Because the original Eloquent never returns objects, we convert
-        // MongoDB related objects to a string representation. This kind
-        // of mimics the SQL behaviour so that dates are formatted
-        // nicely when your models are converted to JSON.
-        foreach ($attributes as $key => &$value) {
-            if ($value instanceof ObjectID) {
-                $value = (string) $value;
-            } elseif ($value instanceof Binary) {
-                $value = (string) $value->getData();
-            }
-        }
-
-        return $attributes;
     }
 
     /**
@@ -567,5 +514,24 @@ abstract class Model extends BaseModel
         }
 
         return $attributes;
+    }
+
+    /** @internal */
+    public function convertKey($value)
+    {
+        if (! $this->hasCast($this->primaryKey)) {
+            return $value;
+        }
+
+        return $this->castAttribute($this->primaryKey, $value);
+    }
+
+    protected function getClassCastableAttributeValue($key, $value)
+    {
+        // The class cast cache does not play nice with database values that
+        // already are objects, so we need to manually unset it
+        unset($this->classCastCache[$key]);
+
+        return parent::getClassCastableAttributeValue($key, $value);
     }
 }

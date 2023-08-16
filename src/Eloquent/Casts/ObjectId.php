@@ -37,10 +37,8 @@ class ObjectId implements CastsAttributes
      */
     public function set($model, string $key, $value, array $attributes)
     {
-        if ($value instanceof BSONObjectId) {
-            return $value;
-        }
+        $value = $value instanceof BSONObjectId ? $value : new BSONObjectId($value);
 
-        return new BSONObjectId($value);
+        return [$key => $value];
     }
 }

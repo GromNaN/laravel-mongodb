@@ -86,6 +86,7 @@ class ModelTest extends TestCase
 
         /** @var User $check */
         $check = User::find($user->_id);
+        $this->assertInstanceOf(User::class, $check);
         $check->age = 36;
         $check->save();
 
@@ -395,22 +396,24 @@ class ModelTest extends TestCase
         yield 'ObjectID' => [
             'model' => User::class,
             'id' => $objectId,
-            'expected' => (string) $objectId,
-            'expectedFound' => true,
+            'expected' => $objectId,
+            // Not found as the keyType is "string"
+            'expectedFound' => false,
         ];
 
         $binaryUuid = new Binary(hex2bin('0c103357380648c9a84b867dcb625cfb'), Binary::TYPE_UUID);
         yield 'BinaryUuid' => [
             'model' => User::class,
             'id' => $binaryUuid,
-            'expected' => (string) $binaryUuid,
-            'expectedFound' => true,
+            'expected' => $binaryUuid,
+            // Not found as the keyType is "string"
+            'expectedFound' => false,
         ];
 
         yield 'cast as BinaryUuid' => [
             'model' => IdIsBinaryUuid::class,
             'id' => $binaryUuid,
-            'expected' => (string) $binaryUuid,
+            'expected' => $binaryUuid,
             'expectedFound' => true,
         ];
 

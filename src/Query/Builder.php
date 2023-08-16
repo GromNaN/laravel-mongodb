@@ -188,7 +188,7 @@ class Builder extends BaseBuilder
      */
     public function find($id, $columns = [])
     {
-        return $this->where('_id', '=', $this->convertKey($id))->first($columns);
+        return parent::find($id, $columns);
     }
 
     /**
@@ -885,25 +885,6 @@ class Builder extends BaseBuilder
     }
 
     /**
-     * Convert a key to ObjectID if needed.
-     *
-     * @param  mixed  $id
-     * @return mixed
-     */
-    public function convertKey($id)
-    {
-        if (is_string($id) && strlen($id) === 24 && ctype_xdigit($id)) {
-            return new ObjectID($id);
-        }
-
-        if (is_string($id) && strlen($id) === 16 && preg_match('~[^\x20-\x7E\t\r\n]~', $id) > 0) {
-            return new Binary($id, Binary::TYPE_UUID);
-        }
-
-        return $id;
-    }
-
-    /**
      * @inheritdoc
      */
     public function where($column, $operator = null, $value = null, $boolean = 'and')
@@ -947,19 +928,6 @@ class Builder extends BaseBuilder
                 // Convert aliased operators
                 if (isset($this->conversion[$where['operator']])) {
                     $where['operator'] = $this->conversion[$where['operator']];
-                }
-            }
-
-            // Convert id's.
-            if (isset($where['column']) && ($where['column'] == '_id' || Str::endsWith($where['column'], '._id'))) {
-                // Multiple values.
-                if (isset($where['values'])) {
-                    foreach ($where['values'] as &$value) {
-                        $value = $this->convertKey($value);
-                    }
-                } // Single value.
-                elseif (isset($where['value'])) {
-                    $where['value'] = $this->convertKey($where['value']);
                 }
             }
 
