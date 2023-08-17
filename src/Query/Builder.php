@@ -12,8 +12,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
 use Jenssegers\Mongodb\Connection;
-use MongoDB\BSON\Binary;
-use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\Regex;
 use MongoDB\BSON\UTCDateTime;
 use MongoDB\Driver\Cursor;
@@ -188,7 +186,7 @@ class Builder extends BaseBuilder
      */
     public function find($id, $columns = [])
     {
-        return parent::find($id, $columns);
+        return $this->where('_id', '=', $id)->first($columns);
     }
 
     /**
@@ -660,14 +658,6 @@ class Builder extends BaseBuilder
     /**
      * @inheritdoc
      */
-    public function chunkById($count, callable $callback, $column = '_id', $alias = null)
-    {
-        return parent::chunkById($count, $callback, $column, $alias);
-    }
-
-    /**
-     * @inheritdoc
-     */
     public function forPageAfterId($perPage = 15, $lastId = 0, $column = '_id')
     {
         return parent::forPageAfterId($perPage, $lastId, $column);
@@ -905,6 +895,11 @@ class Builder extends BaseBuilder
         }
 
         return parent::where(...$params);
+    }
+
+    protected function defaultKeyName(): string
+    {
+        return '_id';
     }
 
     /**

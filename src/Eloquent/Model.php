@@ -145,13 +145,24 @@ abstract class Model extends BaseModel
         return parent::getAttribute($key);
     }
 
+    protected function throwMissingAttributeExceptionIfApplicable($key)
+    {
+        // Fallback to "_id" if "id" is not set.
+        if ($key === 'id') {
+            // Should be deprecated?
+            return $this->getAttribute('_id');
+        }
+
+        parent::throwMissingAttributeExceptionIfApplicable($key);
+    }
+
     /**
      * @inheritdoc
      */
     protected function getAttributeFromArray($key)
     {
         // Support keys in dot notation.
-        if (Str::contains($key, '.')) {
+        if (str_contains($key, '.')) {
             return Arr::get($this->attributes, $key);
         }
 
@@ -238,7 +249,7 @@ abstract class Model extends BaseModel
         }
 
         // Perform unset only on current document
-        return $this->newQuery()->where($this->getKeyName(), $this->getKey())->unset($columns);
+        return $this->newQuery()->whereKey($this->getKey())->unset($columns);
     }
 
     /**
@@ -450,6 +461,26 @@ abstract class Model extends BaseModel
     }
 
     /**
+     * @see \Jenssegers\Mongodb\Query\Builder::whereIn()
+     * Add a "where in" clause to the query.
+     *
+     * @param  \Illuminate\Contracts\Database\Query\Expression|string  $column
+     * @param  mixed  $values
+     * @param  string  $boolean
+     * @param  bool  $not
+     * @return $this
+     */
+    public function whereIn($column, $values, $boolean = 'and', $not = false)
+    {
+        $args = func_get_args();
+        if ($column === $this->getKeyName()) {
+            $args[1] = array_map(fn ($value) => $this->castKeyForDatabase($value), $args[1]);
+        }
+
+        return parent::__call(__FUNCTION__, $args);
+    }
+
+    /**
      * @inheritdoc
      */
     public function __call($method, $parameters)
@@ -517,13 +548,21 @@ abstract class Model extends BaseModel
     }
 
     /** @internal */
-    public function convertKey($value)
+    public function castKeyForDatabase($value)
     {
-        if (! $this->hasCast($this->primaryKey)) {
+        $key = $this->primaryKey;
+
+        if (! $this->hasCast($key)) {
             return $value;
         }
 
-        return $this->castAttribute($this->primaryKey, $value);
+        if (! $this->isClassCastable($key)) {
+            return $value;
+        }
+        $caster = $this->resolveCasterClass($key);
+        $attributes = $this->normalizeCastClassResponse($key, $caster->set($this, $key, $value, []));
+
+        return $attributes[$key];
     }
 
     protected function getClassCastableAttributeValue($key, $value)

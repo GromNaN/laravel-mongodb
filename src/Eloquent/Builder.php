@@ -2,7 +2,10 @@
 
 namespace Jenssegers\Mongodb\Eloquent;
 
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Concerns\BuildsQueries;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Model;
 use Jenssegers\Mongodb\Helpers\QueriesRelationships;
 use MongoDB\Driver\Cursor;
 use MongoDB\Model\BSONDocument;
@@ -156,14 +159,6 @@ class Builder extends EloquentBuilder
     /**
      * @inheritdoc
      */
-    public function chunkById($count, callable $callback, $column = '_id', $alias = null)
-    {
-        return parent::chunkById($count, $callback, $column, $alias);
-    }
-
-    /**
-     * @inheritdoc
-     */
     public function raw($expression = null)
     {
         // Get raw results from the query builder.
@@ -220,6 +215,37 @@ class Builder extends EloquentBuilder
     }
 
     /**
+     * @see \Illuminate\Database\Query\Builder::forPageBeforeId()
+     */
+    public function forPageBeforeId($perPage = 15, $lastId = 0, $column = null)
+    {
+        if (! $column || $column === $this->model->getKeyName()) {
+            $column = $this->model->getKeyName();
+            if ($lastId !== null) {
+                $lastId = $this->model->castKeyForDatabase($lastId);
+            }
+        }
+
+        return parent::forPageBeforeId($perPage, $lastId, $column);
+    }
+
+    /**
+     * @see \Illuminate\Database\Query\Builder::forPageAfterId()
+     * @see BuildsQueries::chunkById() for usage
+     */
+    public function forPageAfterId($perPage = 15, $lastId = 0, $column = null)
+    {
+        if (! $column || $column === $this->model->getKeyName()) {
+            $column = $this->model->getKeyName();
+            if ($lastId !== null) {
+                $lastId = $this->model->castKeyForDatabase($lastId);
+            }
+        }
+
+        return parent::forPageAfterId($perPage, $lastId, $column);
+    }
+
+    /**
      * @inheritdoc
      */
     protected function ensureOrderForCursorPagination($shouldReverse = false)
@@ -244,6 +270,22 @@ class Builder extends EloquentBuilder
 
     public function whereKey($id)
     {
-        return parent::whereKey($this->model->convertKey($id));
+        if ($id instanceof Model) {
+            $id = $id->getKey();
+        }
+
+        if (is_array($id) || $id instanceof Arrayable) {
+            $id = array_map(function ($id) {
+                return $this->model->castKeyForDatabase($id);
+            }, $id);
+
+            $this->query->whereIn($this->model->getQualifiedKeyName(), $id);
+
+            return $this;
+        }
+
+        $id = $this->model->castKeyForDatabase($id);
+
+        return $this->where($this->model->getQualifiedKeyName(), '=', $id);
     }
 }
