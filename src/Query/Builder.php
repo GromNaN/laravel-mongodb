@@ -186,7 +186,11 @@ class Builder extends BaseBuilder
      */
     public function find($id, $columns = [])
     {
-        return $this->where('_id', '=', $id)->first($columns);
+        /**
+         * Remove this method when this is fixed in Laravel.
+         * @see https://github.com/laravel/framework/pull/48089
+         */
+        return $this->where($this->defaultKeyName(), '=', $id)->first($columns);
     }
 
     /**
