@@ -2,6 +2,7 @@
 
 namespace Jenssegers\Mongodb\Eloquent;
 
+use MongoDB\BSON\ObjectId;
 use function array_key_exists;
 use DateTimeInterface;
 use function explode;
@@ -41,7 +42,7 @@ abstract class Model extends BaseModel
      *
      * @var string
      */
-    protected $keyType = 'string';
+    protected $keyType = ObjectId::class;
 
     /**
      * The parent relation instance.
