@@ -12,6 +12,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Jenssegers\Mongodb\Eloquent\Casts\ObjectId as ObjectIdCast;
 use Jenssegers\Mongodb\Eloquent\HybridRelations;
 use Jenssegers\Mongodb\Eloquent\Model as Eloquent;
 
@@ -38,6 +39,7 @@ class User extends Eloquent implements AuthenticatableContract, CanResetPassword
 
     protected $connection = 'mongodb';
     protected $casts = [
+        '_id' => ObjectIdCast::class,
         'birthday' => 'datetime',
         'entry.date' => 'datetime',
         'member_status' => MemberStatus::class,

@@ -62,8 +62,8 @@ class ModelTest extends TestCase
 
         $this->assertTrue(isset($user->_id));
         $this->assertIsString($user->_id);
-        $this->assertNotEquals('', (string) $user->_id);
-        $this->assertNotEquals(0, strlen((string) $user->_id));
+        $this->assertNotEquals('', $user->_id);
+        $this->assertNotEquals(0, strlen($user->_id));
         $this->assertInstanceOf(Carbon::class, $user->created_at);
 
         $raw = $user->getAttributes();
@@ -86,6 +86,7 @@ class ModelTest extends TestCase
 
         /** @var User $check */
         $check = User::find($user->_id);
+        $this->assertInstanceOf(User::class, $check);
         $check->age = 36;
         $check->save();
 
@@ -122,14 +123,14 @@ class ModelTest extends TestCase
         $this->assertInstanceOf(ObjectID::class, $raw['_id']);
 
         $user = new User;
-        $user->_id = 'customId';
+        $user->_id = '64d9e303455918c12204cfb5';
         $user->name = 'John Doe';
         $user->title = 'admin';
         $user->age = 35;
         $user->save();
 
         $this->assertTrue($user->exists);
-        $this->assertEquals('customId', $user->_id);
+        $this->assertEquals('64d9e303455918c12204cfb5', $user->_id);
 
         $raw = $user->getAttributes();
         $this->assertIsString($raw['_id']);
@@ -274,7 +275,8 @@ class ModelTest extends TestCase
         $user->age = 35;
         $user->save();
 
-        User::destroy((string) $user->_id);
+        $this->assertIsString($user->_id);
+        User::destroy($user->_id);
 
         $this->assertEquals(0, User::count());
     }
@@ -395,6 +397,7 @@ class ModelTest extends TestCase
         yield 'ObjectID' => [
             'model' => User::class,
             'id' => $objectId,
+            // $keyType is string, so the ObjectID caster convert to string
             'expected' => (string) $objectId,
             'expectedFound' => true,
         ];
@@ -403,14 +406,15 @@ class ModelTest extends TestCase
         yield 'BinaryUuid' => [
             'model' => User::class,
             'id' => $binaryUuid,
-            'expected' => (string) $binaryUuid,
-            'expectedFound' => true,
+            'expected' => $binaryUuid,
+            // Not found as the keyType is "string"
+            'expectedFound' => false,
         ];
 
         yield 'cast as BinaryUuid' => [
             'model' => IdIsBinaryUuid::class,
             'id' => $binaryUuid,
-            'expected' => (string) $binaryUuid,
+            'expected' => $binaryUuid,
             'expectedFound' => true,
         ];
 
@@ -463,7 +467,7 @@ class ModelTest extends TestCase
         $this->assertEquals(['_id', 'created_at', 'name', 'type', 'updated_at'], $keys);
         $this->assertIsString($array['created_at']);
         $this->assertIsString($array['updated_at']);
-        $this->assertIsString($array['_id']);
+        $this->assertInstanceOf(ObjectID::class, $array['_id']);
     }
 
     public function testUnset(): void
@@ -716,20 +720,20 @@ class ModelTest extends TestCase
         $user->push('tags', 'tag2', true);
 
         $this->assertEquals(['tag1', 'tag1', 'tag2'], $user->tags);
-        $user = User::where('_id', $user->_id)->first();
+        $user = User::find($user->_id);
         $this->assertEquals(['tag1', 'tag1', 'tag2'], $user->tags);
 
         $user->pull('tags', 'tag1');
 
         $this->assertEquals(['tag2'], $user->tags);
-        $user = User::where('_id', $user->_id)->first();
+        $user = User::find($user->_id)->first();
         $this->assertEquals(['tag2'], $user->tags);
 
         $user->push('tags', 'tag3');
         $user->pull('tags', ['tag2', 'tag3']);
 
         $this->assertEquals([], $user->tags);
-        $user = User::where('_id', $user->_id)->first();
+        $user = User::find($user->_id)->first();
         $this->assertEquals([], $user->tags);
     }
 

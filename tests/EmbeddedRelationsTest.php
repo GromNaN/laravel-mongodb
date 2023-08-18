@@ -60,7 +60,7 @@ class EmbeddedRelationsTest extends TestCase
         $this->assertInstanceOf(DateTime::class, $address->created_at);
         $this->assertInstanceOf(DateTime::class, $address->updated_at);
         $this->assertNotNull($address->_id);
-        $this->assertIsString($address->_id);
+        $this->assertInstanceOf(ObjectId::class, $address->_id);
 
         $raw = $address->getAttributes();
         $this->assertInstanceOf(ObjectId::class, $raw['_id']);
@@ -183,7 +183,7 @@ class EmbeddedRelationsTest extends TestCase
         $user = User::create([]);
         $address = $user->addresses()->create(['city' => 'Bruxelles']);
         $this->assertInstanceOf(Address::class, $address);
-        $this->assertIsString($address->_id);
+        $this->assertInstanceOf(ObjectId::class, $address->_id);
         $this->assertEquals(['Bruxelles'], $user->addresses->pluck('city')->all());
 
         $raw = $address->getAttributes();

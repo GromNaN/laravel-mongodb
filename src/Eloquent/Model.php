@@ -2,6 +2,7 @@
 
 namespace Jenssegers\Mongodb\Eloquent;
 
+use MongoDB\BSON\ObjectId;
 use function array_key_exists;
 use DateTimeInterface;
 use function explode;
@@ -15,8 +16,6 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use function in_array;
 use Jenssegers\Mongodb\Query\Builder as QueryBuilder;
-use MongoDB\BSON\Binary;
-use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDateTime;
 use function uniqid;
 
@@ -43,7 +42,7 @@ abstract class Model extends BaseModel
      *
      * @var string
      */
-    protected $keyType = 'string';
+    protected $keyType = ObjectId::class;
 
     /**
      * The parent relation instance.
@@ -51,30 +50,6 @@ abstract class Model extends BaseModel
      * @var Relation
      */
     protected $parentRelation;
-
-    /**
-     * Custom accessor for the model's id.
-     *
-     * @param  mixed  $value
-     * @return mixed
-     */
-    public function getIdAttribute($value = null)
-    {
-        // If we don't have a value for 'id', we will use the MongoDB '_id' value.
-        // This allows us to work with models in a more sql-like way.
-        if (! $value && array_key_exists('_id', $this->attributes)) {
-            $value = $this->attributes['_id'];
-        }
-
-        // Convert ObjectID to string.
-        if ($value instanceof ObjectID) {
-            return (string) $value;
-        } elseif ($value instanceof Binary) {
-            return (string) $value->getData();
-        }
-
-        return $value;
-    }
 
     /**
      * @inheritdoc
@@ -171,13 +146,24 @@ abstract class Model extends BaseModel
         return parent::getAttribute($key);
     }
 
+    protected function throwMissingAttributeExceptionIfApplicable($key)
+    {
+        // Fallback to "_id" if "id" is not set.
+        if ($key === 'id') {
+            // Should be deprecated?
+            return $this->getAttribute('_id');
+        }
+
+        parent::throwMissingAttributeExceptionIfApplicable($key);
+    }
+
     /**
      * @inheritdoc
      */
     protected function getAttributeFromArray($key)
     {
         // Support keys in dot notation.
-        if (Str::contains($key, '.')) {
+        if (str_contains($key, '.')) {
             return Arr::get($this->attributes, $key);
         }
 
@@ -190,12 +176,7 @@ abstract class Model extends BaseModel
     public function setAttribute($key, $value)
     {
         // Convert _id to ObjectID.
-        if ($key == '_id' && is_string($value)) {
-            $builder = $this->newBaseQueryBuilder();
-
-            $value = $builder->convertKey($value);
-        } // Support keys in dot notation.
-        elseif (Str::contains($key, '.')) {
+        if (Str::contains($key, '.')) {
             // Store to a temporary key, then move data to the actual key
             $uniqueKey = uniqid($key);
             parent::setAttribute($uniqueKey, $value);
@@ -207,28 +188,6 @@ abstract class Model extends BaseModel
         }
 
         return parent::setAttribute($key, $value);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function attributesToArray()
-    {
-        $attributes = parent::attributesToArray();
-
-        // Because the original Eloquent never returns objects, we convert
-        // MongoDB related objects to a string representation. This kind
-        // of mimics the SQL behaviour so that dates are formatted
-        // nicely when your models are converted to JSON.
-        foreach ($attributes as $key => &$value) {
-            if ($value instanceof ObjectID) {
-                $value = (string) $value;
-            } elseif ($value instanceof Binary) {
-                $value = (string) $value->getData();
-            }
-        }
-
-        return $attributes;
     }
 
     /**
@@ -291,7 +250,7 @@ abstract class Model extends BaseModel
         }
 
         // Perform unset only on current document
-        return $this->newQuery()->where($this->getKeyName(), $this->getKey())->unset($columns);
+        return $this->newQuery()->whereKey($this->getKey())->unset($columns);
     }
 
     /**
@@ -503,6 +462,26 @@ abstract class Model extends BaseModel
     }
 
     /**
+     * @see \Jenssegers\Mongodb\Query\Builder::whereIn()
+     * Add a "where in" clause to the query.
+     *
+     * @param  \Illuminate\Contracts\Database\Query\Expression|string  $column
+     * @param  mixed  $values
+     * @param  string  $boolean
+     * @param  bool  $not
+     * @return $this
+     */
+    public function whereIn($column, $values, $boolean = 'and', $not = false)
+    {
+        $args = func_get_args();
+        if ($column === $this->getKeyName()) {
+            $args[1] = array_map(fn ($value) => $this->castKeyForDatabase($value), $args[1]);
+        }
+
+        return parent::__call(__FUNCTION__, $args);
+    }
+
+    /**
      * @inheritdoc
      */
     public function __call($method, $parameters)
@@ -567,5 +546,32 @@ abstract class Model extends BaseModel
         }
 
         return $attributes;
+    }
+
+    /** @internal */
+    public function castKeyForDatabase($value)
+    {
+        $key = $this->primaryKey;
+
+        if (! $this->hasCast($key)) {
+            return $value;
+        }
+
+        if (! $this->isClassCastable($key)) {
+            return $value;
+        }
+        $caster = $this->resolveCasterClass($key);
+        $attributes = $this->normalizeCastClassResponse($key, $caster->set($this, $key, $value, []));
+
+        return $attributes[$key];
+    }
+
+    protected function getClassCastableAttributeValue($key, $value)
+    {
+        // The class cast cache does not play nice with database values that
+        // already are objects, so we need to manually unset it
+        unset($this->classCastCache[$key]);
+
+        return parent::getClassCastableAttributeValue($key, $value);
     }
 }

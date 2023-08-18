@@ -212,9 +212,15 @@ abstract class EmbedsOneOrMany extends Relation
         $attributes = $this->parent->getAttributes();
 
         // Get embedded models form parent attributes.
-        $embedded = isset($attributes[$this->localKey]) ? (array) $attributes[$this->localKey] : null;
+        if (!isset($attributes[$this->localKey])) {
+            return null;
+        }
 
-        return $embedded;
+        if (is_array($attributes[$this->localKey])) {
+            return $attributes[$this->localKey];
+        }
+
+        return [$attributes[$this->localKey]];
     }
 
     /**
@@ -245,8 +251,7 @@ abstract class EmbedsOneOrMany extends Relation
             $id = $id->getKey();
         }
 
-        // Convert the id to MongoId if necessary.
-        return $this->toBase()->convertKey($id);
+        return $id;
     }
 
     /**

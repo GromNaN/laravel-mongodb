@@ -217,8 +217,8 @@ class RelationsTest extends TestCase
         $client = Client::Where('name', '=', 'Buffet Bar Inc.')->first();
 
         // Assert they are attached
-        $this->assertContains($client->_id, $user->client_ids);
-        $this->assertContains($user->_id, $client->user_ids);
+        $this->assertContainsObjectId($client->_id, $user->client_ids);
+        $this->assertContainsObjectId($user->_id, $client->user_ids);
         $this->assertCount(2, $user->clients);
         $this->assertCount(2, $client->users);
 
@@ -348,8 +348,8 @@ class RelationsTest extends TestCase
         $this->assertArrayHasKey('groups', $user->getAttributes());
 
         // Assert they are attached
-        $this->assertContains($group->_id, $user->groups->pluck('_id')->toArray());
-        $this->assertContains($user->_id, $group->users->pluck('_id')->toArray());
+        $this->assertContainsObjectId($group->_id, $user->groups->pluck('_id')->toArray());
+        $this->assertContainsObjectId($user->_id, $group->users->pluck('_id')->toArray());
         $this->assertEquals($group->_id, $user->groups()->first()->_id);
         $this->assertEquals($user->_id, $group->users()->first()->_id);
     }

@@ -195,14 +195,14 @@ class BelongsToMany extends EloquentBelongsToMany
 
             $query = $this->newRelatedQuery();
 
-            $query->whereIn($this->related->getKeyName(), (array) $id);
+            $query->whereIn($this->related->getKeyName(), is_array($id) ? $id : [$id]);
 
             // Attach the new parent id to the related model.
             $query->push($this->foreignPivotKey, $this->parent->getKey(), true);
         }
 
         // Attach the new ids to the parent model.
-        $this->parent->push($this->getRelatedKey(), (array) $id, true);
+        $this->parent->push($this->getRelatedKey(), is_array($id) ? $id : [$id], true);
 
         if ($touch) {
             $this->touchIfTouching();
@@ -215,7 +215,7 @@ class BelongsToMany extends EloquentBelongsToMany
     public function detach($ids = [], $touch = true)
     {
         if ($ids instanceof Model) {
-            $ids = (array) $ids->getKey();
+            $ids = $ids->getKey();
         }
 
         $query = $this->newRelatedQuery();
@@ -223,7 +223,9 @@ class BelongsToMany extends EloquentBelongsToMany
         // If associated IDs were passed to the method we will only delete those
         // associations, otherwise all of the association ties will be broken.
         // We'll return the numbers of affected rows when we do the deletes.
-        $ids = (array) $ids;
+        if (! is_array($ids)) {
+            $ids = [$ids];
+        }
 
         // Detach all ids from the parent model.
         $this->parent->pull($this->getRelatedKey(), $ids);
@@ -257,7 +259,7 @@ class BelongsToMany extends EloquentBelongsToMany
 
         foreach ($results as $result) {
             foreach ($result->$foreign as $item) {
-                $dictionary[$item][] = $result;
+                $dictionary[(string) $item][] = $result;
             }
         }
 
@@ -323,7 +325,7 @@ class BelongsToMany extends EloquentBelongsToMany
             if (! is_array($attributes)) {
                 [$id, $attributes] = [$attributes, []];
             }
-            $results[$id] = $attributes;
+            $results[(string) $id] = $attributes;
         }
 
         return $results;

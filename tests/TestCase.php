@@ -11,10 +11,25 @@ use Jenssegers\Mongodb\MongodbQueueServiceProvider;
 use Jenssegers\Mongodb\MongodbServiceProvider;
 use Jenssegers\Mongodb\Tests\Models\User;
 use Jenssegers\Mongodb\Validation\ValidationServiceProvider;
+use MongoDB\BSON\ObjectId;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 class TestCase extends OrchestraTestCase
 {
+    public static function assertContainsObjectId(ObjectId $expectedObjectId, array $objectIds, string $message = ''): void
+    {
+        self::assertNotEmpty($objectIds, $message ?: 'Failed asserting that array of object ids is not empty.');
+
+        foreach ($objectIds as $objectId) {
+            if ($objectId == $expectedObjectId) {
+                // Found successfully
+                return;
+            }
+        }
+
+        self::fail($message ?: sprintf('Failed asserting that ObjectId(%s) was found in [ObjectId(%s)].', $expectedObjectId, implode('), ObjectId(', $objectIds).')'));
+    }
+
     /**
      * Get application providers.
      *
