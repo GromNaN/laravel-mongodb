@@ -325,7 +325,7 @@ class BelongsToMany extends EloquentBelongsToMany
             if (! is_array($attributes)) {
                 [$id, $attributes] = [$attributes, []];
             }
-            $results[$id] = $attributes;
+            $results[(string) $id] = $attributes;
         }
 
         return $results;
