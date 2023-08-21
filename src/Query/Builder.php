@@ -135,16 +135,6 @@ class Builder extends BaseBuilder
     ];
 
     /**
-     * @inheritdoc
-     */
-    public function __construct(Connection $connection, Processor $processor)
-    {
-        $this->grammar = new Grammar;
-        $this->connection = $connection;
-        $this->processor = $processor;
-    }
-
-    /**
      * Set the projections.
      *
      * @param  array  $columns
@@ -758,16 +748,16 @@ class Builder extends BaseBuilder
     /**
      * @inheritdoc
      */
-    public function raw($expression = null)
+    public function raw($value = null)
     {
         // Execute the closure on the mongodb collection
-        if ($expression instanceof Closure) {
-            return call_user_func($expression, $this->collection);
+        if ($value instanceof Closure) {
+            return call_user_func($value, $this->collection);
         }
 
         // Create an expression for the given value
-        if ($expression !== null) {
-            return new Expression($expression);
+        if ($value !== null) {
+            return new Expression($value);
         }
 
         // Quick access to the mongodb collection
@@ -856,7 +846,7 @@ class Builder extends BaseBuilder
      */
     public function newQuery()
     {
-        return new self($this->connection, $this->processor);
+        return new self($this->connection, null, $this->processor);
     }
 
     /**
