@@ -1204,9 +1204,17 @@ class Builder extends BaseBuilder
                 ],
             ],
             'ne' => [
-                $column => [
-                    '$gt' => $endOfDay,
-                    '$lt' => $startOfDay,
+                '$or' => [
+                    [
+                        $column => [
+                            '$lt' => $startOfDay,
+                        ],
+                    ],
+                    [
+                        $column => [
+                            '$gt' => $endOfDay,
+                        ],
+                    ],
                 ],
             ],
             'lt', 'gte' => [
