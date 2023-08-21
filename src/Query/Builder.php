@@ -1304,10 +1304,16 @@ class Builder extends BaseBuilder
     {
         extract($where);
 
-        $where['operator'] = $operator;
-        $where['value'] = $value;
-
-        return $this->compileWhereBasic($where);
+        return [
+            '$expr' => [
+                '$'.$operator => [
+                    [
+                        '$dateToString' => ['date' => '$'.$column, 'format' => '%H:%M:%S'],
+                    ],
+                    $value,
+                ],
+            ],
+        ];
     }
 
     /**
